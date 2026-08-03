@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Worker": {
+      "title": "Worker",
+      "description": "Profesionales y trabajadores de oficios (Gasistas, Plomeros, Electricistas, etc.)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "trade": { "type": "string" },
+        "tradeTitle": { "type": "string" },
+        "matricula": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "location": { "type": "string" },
+        "zones": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "completedJobs": { "type": "number" },
+        "verified": { "type": "boolean" },
+        "ferreteroPartner": { "type": "boolean" },
+        "hourlyRate": { "type": "number" },
+        "visitFee": { "type": "number" },
+        "availability": {
+          "type": "object",
+          "properties": {
+            "days": { "type": "array", "items": { "type": "string" } },
+            "hours": { "type": "string" },
+            "urgencies24h": { "type": "boolean" }
+          },
+          "required": ["days", "hours", "urgencies24h"]
+        },
+        "bio": { "type": "string" },
+        "services": { "type": "array", "items": { "type": "string" } },
+        "gallery": { "type": "array", "items": { "type": "string" } },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "clientName": { "type": "string" },
+              "rating": { "type": "number" },
+              "date": { "type": "string" },
+              "serviceType": { "type": "string" },
+              "comment": { "type": "string" },
+              "tags": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["id", "clientName", "rating", "date", "serviceType", "comment", "tags"]
+          }
+        },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "trade", "phone", "location", "rating", "hourlyRate", "bio"]
+    },
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "Solicitudes de turno o presupuesto enviadas por los clientes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "workerPhone": { "type": "string" },
+        "workerTrade": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "clientAddress": { "type": "string" },
+        "date": { "type": "string" },
+        "timeSlot": { "type": "string" },
+        "description": { "type": "string" },
+        "urgency": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "workerId", "clientName", "clientPhone", "clientAddress", "date", "description"]
+    }
+  },
+  "firestore": {
+    "collections": {
+      "workers": {
+        "entity": "Worker",
+        "description": "Colección de trabajadores registrados en ServiGo"
+      },
+      "bookings": {
+        "entity": "BookingRequest",
+        "description": "Colección de reservas/solicitudes de turnos"
+      }
+    }
+  }
+}

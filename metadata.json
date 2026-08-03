@@ -1,0 +1,6 @@
+{
+  "name": "ServiGo - Red de Servicios y Profesionales",
+  "description": "Aplicación móvil para la búsqueda rápida y segura de trabajadores de servicios domésticos y profesionales (gasistas, electricistas, plomeros) con calificaciones, disponibilidad y el auspicio de Ferretería Bruzzone.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidWorker(data) {
+      return data.keys().hasAll(['id', 'name', 'trade', 'phone', 'location'])
+        && data.id is string
+        && data.name is string;
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['id', 'workerId', 'clientName', 'clientPhone', 'clientAddress'])
+        && data.id is string
+        && data.clientName is string;
+    }
+
+    // Workers collection
+    match /workers/{workerId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Bookings collection
+    match /bookings/{bookingId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Banners collection (Public read, full write for admin)
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // App Configuration collection
+    match /app_config/{configId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+  }
+}
