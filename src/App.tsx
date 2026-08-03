@@ -17,6 +17,7 @@ import {
   subscribeWorkers,
   subscribeBookings,
   saveWorkerToFirestore,
+  deleteWorkerFromFirestore,
   saveReviewToFirestore,
   saveBookingToFirestore,
   subscribeBanners,
@@ -511,8 +512,14 @@ export default function App() {
         onDeleteBanner={async (bannerId) => {
           await deleteBannerFromFirestore(bannerId);
         }}
+        workers={workers}
+        onDeleteWorker={async (workerId) => {
+          await deleteWorkerFromFirestore(workerId);
+        }}
         onClearAllData={async () => {
           await clearAllFirestoreData();
+          localStorage.removeItem('servigo_workers_v1');
+          localStorage.removeItem('servigo_bookings_v1');
           setWorkers([]);
           setBookings([]);
           setBanners([]);
@@ -521,6 +528,8 @@ export default function App() {
         }}
         onResetToDefaults={async () => {
           await resetFirestoreToDefaults();
+          localStorage.removeItem('servigo_workers_v1');
+          localStorage.removeItem('servigo_bookings_v1');
           showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
         }}
         showToast={showToast}

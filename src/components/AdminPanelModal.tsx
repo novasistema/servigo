@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TabVisibilityConfig, PromotedBanner, AppConfig } from '../types';
+import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker } from '../types';
 import {
   X,
   Lock,
@@ -28,6 +28,14 @@ import {
   Clock,
   UserCheck,
   RefreshCw,
+  Users,
+  Search,
+  Phone,
+  MapPin,
+  Star,
+  ShieldCheck,
+  Briefcase,
+  UserX,
 } from 'lucide-react';
 
 interface AdminPanelModalProps {
@@ -40,6 +48,8 @@ interface AdminPanelModalProps {
   banners: PromotedBanner[];
   onSaveBanner: (banner: PromotedBanner) => Promise<void>;
   onDeleteBanner: (bannerId: string) => Promise<void>;
+  workers: Worker[];
+  onDeleteWorker: (workerId: string) => Promise<void>;
   onClearAllData?: () => Promise<void>;
   onResetToDefaults?: () => Promise<void>;
   showToast: (msg: string) => void;
@@ -55,15 +65,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   banners,
   onSaveBanner,
   onDeleteBanner,
+  workers,
+  onDeleteWorker,
   onClearAllData,
   onResetToDefaults,
   showToast,
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'reset'>('tabs');
+  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'reset'>('tabs');
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
+  // Worker Management States
+  const [workerSearchTerm, setWorkerSearchTerm] = useState('');
+  const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+  const [isDeletingWorker, setIsDeletingWorker] = useState(false);
+
   // Reset Confirmation States
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -206,6 +223,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     return (b.paymentStatus || 'paid') === subscriptionFilter;
   });
 
+  const filteredWorkers = workers.filter((w) => {
+    const term = workerSearchTerm.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      w.name.toLowerCase().includes(term) ||
+      w.trade.toLowerCase().includes(term) ||
+      w.location.toLowerCase().includes(term) ||
+      w.phone.includes(term)
+    );
+  });
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -291,40 +319,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           /* AUTHENTICATED PANEL BODY */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Tab Navigation Switches */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setActiveTab('tabs')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                   activeTab === 'tabs'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Layers className="w-4 h-4" />
+                <Layers className="w-3.5 h-3.5" />
                 <span>1. Solapas</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('banners')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                   activeTab === 'banners'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Megaphone className="w-4 h-4" />
+                <Megaphone className="w-3.5 h-3.5" />
                 <span>2. Banners ({banners.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('subscriptions')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                   activeTab === 'subscriptions'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <CreditCard className="w-4 h-4" />
+                <CreditCard className="w-3.5 h-3.5" />
                 <span>3. Pagos</span>
                 {(pendingPaymentsCount > 0 || expiredPaymentsCount > 0) && (
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
@@ -332,15 +360,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
 
               <button
+                onClick={() => setActiveTab('workers')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                  activeTab === 'workers'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>4. Trabajadores ({workers.length})</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('reset')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                   activeTab === 'reset'
                     ? 'bg-rose-600 text-white shadow-md'
                     : 'text-rose-400 hover:bg-rose-500/10'
                 }`}
               >
-                <Trash2 className="w-4 h-4" />
-                <span>4. Borrar Todo</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>5. Borrar Todo</span>
               </button>
             </div>
 
@@ -973,7 +1013,103 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* TAB 4: REINICIAR Y BORRAR DATOS */}
+            {/* TAB 4: GESTIÓN Y BORRADO DE TRABAJADORES */}
+            {activeTab === 'workers' && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <Users className="w-4 h-4 text-amber-400" />
+                      Gestión de Trabajadores Registrados ({workers.length})
+                    </h3>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">
+                      Busca y administra a los prestadores de servicio. Puedes eliminar perfiles obsoletos o falsos de Firestore.
+                    </p>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      value={workerSearchTerm}
+                      onChange={(e) => setWorkerSearchTerm(e.target.value)}
+                      placeholder="Buscar por nombre, oficio o teléfono..."
+                      className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {filteredWorkers.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+                    <Users className="w-12 h-12 text-slate-700 mx-auto" />
+                    <p className="text-sm text-slate-400 font-bold">
+                      {workerSearchTerm
+                        ? 'No se encontraron trabajadores que coincidan con la búsqueda.'
+                        : 'No hay trabajadores registrados en la base de datos.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {filteredWorkers.map((w) => (
+                      <div
+                        key={w.id}
+                        className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <img
+                            src={w.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                            alt={w.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-800 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="text-xs font-black text-white truncate">{w.name}</h4>
+                              {w.verified && (
+                                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                  <ShieldCheck className="w-2.5 h-2.5" />
+                                  Verificado
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1 truncate">
+                              <Briefcase className="w-3 h-3 text-slate-500 shrink-0" />
+                              {w.trade}
+                            </p>
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+                              <MapPin className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                              {w.location}
+                            </p>
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+                              <Phone className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                              {w.phone}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-[11px] text-amber-400 font-bold">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span>{w.rating.toFixed(1)}</span>
+                            <span className="text-[10px] text-slate-500 font-normal">({w.reviewsCount})</span>
+                          </div>
+
+                          <button
+                            onClick={() => setWorkerToDelete(w)}
+                            className="py-1.5 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Eliminar Trabajador</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: REINICIAR Y BORRAR DATOS */}
             {activeTab === 'reset' && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="bg-rose-950/40 border border-rose-500/30 rounded-3xl p-5 sm:p-6 space-y-4 text-rose-100">
@@ -1160,6 +1296,75 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   )}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL FOR DELETING A SINGLE WORKER */}
+      {workerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 max-w-md w-full space-y-5 text-white shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-3 bg-rose-500/20 border border-rose-500/30 rounded-2xl">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black">¿Eliminar Trabajador?</h3>
+                <p className="text-xs text-slate-400">Confirmación de borrado permanente</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={workerToDelete.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  alt={workerToDelete.name}
+                  className="w-12 h-12 rounded-xl object-cover border border-slate-800"
+                />
+                <div>
+                  <h4 className="text-sm font-bold text-white">{workerToDelete.name}</h4>
+                  <p className="text-xs text-amber-400 font-medium">{workerToDelete.trade}</p>
+                  <p className="text-[10px] text-slate-400">{workerToDelete.location} • {workerToDelete.phone}</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed pt-3 border-t border-slate-900">
+                Esta acción eliminará definitivamente el perfil de <b>{workerToDelete.name}</b> de la base de datos de Cloud Firestore. Ya no aparecerá en el catálogo ni en las búsquedas.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setWorkerToDelete(null)}
+                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors"
+                disabled={isDeletingWorker}
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    setIsDeletingWorker(true);
+                    await onDeleteWorker(workerToDelete.id);
+                    showToast(`🗑️ Trabajador "${workerToDelete.name}" eliminado correctamente.`);
+                    setWorkerToDelete(null);
+                  } catch (err) {
+                    showToast('❌ Error al eliminar el trabajador.');
+                  } finally {
+                    setIsDeletingWorker(false);
+                  }
+                }}
+                disabled={isDeletingWorker}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg"
+              >
+                {isDeletingWorker ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>Sí, Eliminar Definitivamente</span>
+              </button>
             </div>
           </div>
         </div>

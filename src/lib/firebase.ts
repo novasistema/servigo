@@ -3,6 +3,7 @@ import {
   getFirestore,
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   addDoc,
@@ -99,23 +100,18 @@ export const INITIAL_BANNERS: PromotedBanner[] = [
 
 
 /**
- * Seed initial workers if collection is empty
+ * Seed initial workers if collection is empty (only if first time initialization)
  */
-export async function seedInitialWorkersIfEmpty(): Promise<Worker[]> {
+export async function ensureDatabaseInitialized(): Promise<void> {
   try {
-    const querySnapshot = await getDocs(collection(db, WORKERS_COLLECTION));
-    if (querySnapshot.empty) {
-      console.log('Seeding initial workers into Firestore...');
-      const seedPromises = INITIAL_WORKERS.map((worker) =>
-        setDoc(doc(db, WORKERS_COLLECTION, worker.id), worker)
-      );
-      await Promise.all(seedPromises);
-      return INITIAL_WORKERS;
+    const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
+    const docSnap = await getDoc(configDocRef);
+    if (!docSnap.exists()) {
+      console.log('First time setup: Initializing Firestore with default demo data...');
+      await resetFirestoreToDefaults();
     }
-    return querySnapshot.docs.map((docSnap) => docSnap.data() as Worker);
   } catch (error) {
-    console.error('Error seeding/fetching workers from Firestore:', error);
-    return INITIAL_WORKERS;
+    console.error('Error checking database initialization:', error);
   }
 }
 
@@ -125,22 +121,18 @@ export async function seedInitialWorkersIfEmpty(): Promise<Worker[]> {
 export function subscribeWorkers(onData: (workers: Worker[]) => void): () => void {
   const workersRef = collection(db, WORKERS_COLLECTION);
 
-  // Check and seed if empty first
-  seedInitialWorkersIfEmpty();
+  // Check and seed if database has never been initialized
+  ensureDatabaseInitialized();
 
   const unsubscribe = onSnapshot(
     workersRef,
     (snapshot) => {
-      if (!snapshot.empty) {
-        const workersList: Worker[] = snapshot.docs.map((docSnap) => docSnap.data() as Worker);
-        onData(workersList);
-      } else {
-        onData(INITIAL_WORKERS);
-      }
+      const workersList: Worker[] = snapshot.docs.map((docSnap) => docSnap.data() as Worker);
+      onData(workersList);
     },
     (error) => {
       console.error('Firestore workers snapshot listener error:', error);
-      onData(INITIAL_WORKERS);
+      onData([]);
     }
   );
 
@@ -148,14 +140,48 @@ export function subscribeWorkers(onData: (workers: Worker[]) => void): () => voi
 }
 
 /**
+ * Recursively removes `undefined` values from an object or array so Firestore SDK doesn't throw invalid data errors.
+ */
+export function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) return null as unknown as T;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeForFirestore(value);
+      }
+    }
+    return cleaned as unknown as T;
+  }
+  return obj;
+}
+
+/**
  * Save or update a worker in Firestore
  */
 export async function saveWorkerToFirestore(worker: Worker): Promise<void> {
   try {
-    const workerRef = doc(db, WORKERS_COLLECTION, worker.id);
-    await setDoc(workerRef, worker, { merge: true });
+    const cleanWorker = sanitizeForFirestore(worker);
+    const workerRef = doc(db, WORKERS_COLLECTION, cleanWorker.id);
+    await setDoc(workerRef, cleanWorker, { merge: true });
   } catch (error) {
     console.error('Error saving worker to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a worker from Firestore
+ */
+export async function deleteWorkerFromFirestore(workerId: string): Promise<void> {
+  try {
+    const workerRef = doc(db, WORKERS_COLLECTION, workerId);
+    await deleteDoc(workerRef);
+  } catch (error) {
+    console.error('Error deleting worker from Firestore:', error);
     throw error;
   }
 }
@@ -219,32 +245,12 @@ export function subscribeBookings(onData: (bookings: BookingRequest[]) => void):
  */
 export async function saveBookingToFirestore(booking: BookingRequest): Promise<void> {
   try {
-    const bookingRef = doc(db, BOOKINGS_COLLECTION, booking.id);
-    await setDoc(bookingRef, booking);
+    const cleanBooking = sanitizeForFirestore(booking);
+    const bookingRef = doc(db, BOOKINGS_COLLECTION, cleanBooking.id);
+    await setDoc(bookingRef, cleanBooking, { merge: true });
   } catch (error) {
     console.error('Error saving booking to Firestore:', error);
     throw error;
-  }
-}
-
-/**
- * Seed initial banners if empty
- */
-export async function seedInitialBannersIfEmpty(): Promise<PromotedBanner[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, BANNERS_COLLECTION));
-    if (querySnapshot.empty) {
-      console.log('Seeding initial banners into Firestore...');
-      const seedPromises = INITIAL_BANNERS.map((banner) =>
-        setDoc(doc(db, BANNERS_COLLECTION, banner.id), banner)
-      );
-      await Promise.all(seedPromises);
-      return INITIAL_BANNERS;
-    }
-    return querySnapshot.docs.map((docSnap) => docSnap.data() as PromotedBanner);
-  } catch (error) {
-    console.error('Error seeding/fetching banners:', error);
-    return INITIAL_BANNERS;
   }
 }
 
@@ -253,23 +259,18 @@ export async function seedInitialBannersIfEmpty(): Promise<PromotedBanner[]> {
  */
 export function subscribeBanners(onData: (banners: PromotedBanner[]) => void): () => void {
   const bannersRef = collection(db, BANNERS_COLLECTION);
-  seedInitialBannersIfEmpty();
 
   const unsubscribe = onSnapshot(
     bannersRef,
     (snapshot) => {
-      if (!snapshot.empty) {
-        const bannersList = snapshot.docs.map((docSnap) => docSnap.data() as PromotedBanner);
-        // sort by priority
-        bannersList.sort((a, b) => (a.priority || 0) - (b.priority || 0));
-        onData(bannersList);
-      } else {
-        onData(INITIAL_BANNERS);
-      }
+      const bannersList = snapshot.docs.map((docSnap) => docSnap.data() as PromotedBanner);
+      // sort by priority
+      bannersList.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+      onData(bannersList);
     },
     (error) => {
       console.error('Error in banners listener:', error);
-      onData(INITIAL_BANNERS);
+      onData([]);
     }
   );
 
@@ -281,8 +282,9 @@ export function subscribeBanners(onData: (banners: PromotedBanner[]) => void): (
  */
 export async function saveBannerToFirestore(banner: PromotedBanner): Promise<void> {
   try {
-    const bannerRef = doc(db, BANNERS_COLLECTION, banner.id);
-    await setDoc(bannerRef, banner, { merge: true });
+    const cleanBanner = sanitizeForFirestore(banner);
+    const bannerRef = doc(db, BANNERS_COLLECTION, cleanBanner.id);
+    await setDoc(bannerRef, cleanBanner, { merge: true });
   } catch (error) {
     console.error('Error saving banner to Firestore:', error);
     throw error;
@@ -294,7 +296,6 @@ export async function saveBannerToFirestore(banner: PromotedBanner): Promise<voi
  */
 export async function deleteBannerFromFirestore(bannerId: string): Promise<void> {
   try {
-    const { deleteDoc } = await import('firebase/firestore');
     const bannerRef = doc(db, BANNERS_COLLECTION, bannerId);
     await deleteDoc(bannerRef);
   } catch (error) {
@@ -320,7 +321,7 @@ export function subscribeAppConfig(onData: (config: AppConfig) => void): () => v
           tabs: DEFAULT_TAB_CONFIG,
           updatedAt: new Date().toISOString(),
         };
-        setDoc(configDocRef, defaultConfig);
+        setDoc(configDocRef, sanitizeForFirestore(defaultConfig));
         onData(defaultConfig);
       }
     },
@@ -342,8 +343,9 @@ export function subscribeAppConfig(onData: (config: AppConfig) => void): () => v
  */
 export async function saveAppConfigToFirestore(config: AppConfig): Promise<void> {
   try {
+    const cleanConfig = sanitizeForFirestore(config);
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
-    await setDoc(configDocRef, config, { merge: true });
+    await setDoc(configDocRef, cleanConfig, { merge: true });
   } catch (error) {
     console.error('Error saving app config to Firestore:', error);
     throw error;
@@ -370,11 +372,11 @@ export async function clearAllFirestoreData(): Promise<void> {
 
     // Reset app config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
-    await setDoc(configDocRef, {
+    await setDoc(configDocRef, sanitizeForFirestore({
       id: 'settings',
       tabs: DEFAULT_TAB_CONFIG,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     console.error('Error clearing all Firestore data:', error);
     throw error;
@@ -391,20 +393,20 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     await clearCollection(BANNERS_COLLECTION);
 
     // Seed workers
-    const workerPromises = INITIAL_WORKERS.map((w) => setDoc(doc(db, WORKERS_COLLECTION, w.id), w));
+    const workerPromises = INITIAL_WORKERS.map((w) => setDoc(doc(db, WORKERS_COLLECTION, w.id), sanitizeForFirestore(w)));
     await Promise.all(workerPromises);
 
     // Seed banners
-    const bannerPromises = INITIAL_BANNERS.map((b) => setDoc(doc(db, BANNERS_COLLECTION, b.id), b));
+    const bannerPromises = INITIAL_BANNERS.map((b) => setDoc(doc(db, BANNERS_COLLECTION, b.id), sanitizeForFirestore(b)));
     await Promise.all(bannerPromises);
 
     // Reset config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
-    await setDoc(configDocRef, {
+    await setDoc(configDocRef, sanitizeForFirestore({
       id: 'settings',
       tabs: DEFAULT_TAB_CONFIG,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     console.error('Error resetting Firestore to defaults:', error);
     throw error;
