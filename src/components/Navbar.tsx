@@ -25,7 +25,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminPanel,
   isAdminAuthenticated = false,
 }) => {
-  const logoSrc = customLogoUrl || servigoOfficialLogo;
+  const [logoError, setLogoError] = React.useState(false);
+
+  const isValidCustomUrl =
+    Boolean(customLogoUrl) &&
+    typeof customLogoUrl === 'string' &&
+    (customLogoUrl.startsWith('http://') ||
+      customLogoUrl.startsWith('https://') ||
+      customLogoUrl.startsWith('data:') ||
+      customLogoUrl.startsWith('/'));
 
   return (
     <header className="bg-orange-600 text-white sticky top-0 z-40 shadow-lg">
@@ -63,33 +71,79 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Brand & Logo Header */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div 
+        <div
           onClick={() => setActiveTab('search')}
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          {/* Logo Container / Mark */}
-          <div className="relative h-12 rounded-2xl bg-slate-950/20 p-1 flex items-center justify-center border border-white/20 group-hover:scale-105 transition-transform overflow-hidden shadow-md">
-            <img 
-              src={logoSrc} 
-              alt="ServiGo - La solución que buscas, está aquí." 
-              className="h-full w-auto max-w-[180px] object-contain rounded-xl"
+          {isValidCustomUrl && !logoError ? (
+            <img
+              src={customLogoUrl}
+              alt="ServiGo Logo"
+              onError={() => setLogoError(true)}
+              className="h-10 sm:h-12 w-auto object-contain rounded-xl max-w-[220px]"
             />
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              {/* Dynamic Brand Logo Emblem */}
+              <div className="relative w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-sky-400 p-0.5 shadow-md group-hover:scale-105 transition-transform">
+                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 via-sky-400/20 to-emerald-400/30" />
+                  <svg
+                    className="w-6 h-6 relative z-10 text-white"
+                    viewBox="0 0 40 40"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 20C12 15.5817 15.5817 12 20 12C23.5 12 26.5 14.2 27.5 17.3"
+                      stroke="#f97316"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M28 20C28 24.4183 24.4183 28 20 28C16.5 28 13.5 25.8 12.5 22.7"
+                      stroke="#38bdf8"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M10 22L16 28L30 11"
+                      stroke="#34d399"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M24 11H30V17"
+                      stroke="#34d399"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-tight text-white leading-none">
-                Servi<span className="text-amber-200">Go</span>
-              </span>
-              <span className="bg-orange-500/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 border border-orange-400">
-                <ShieldCheck className="w-3 h-3 text-amber-200" />
-                Bruzzone Network
-              </span>
+              {/* Brand Name Typography */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none">
+                    Servi
+                    <span className="bg-gradient-to-r from-sky-300 via-amber-200 to-emerald-300 bg-clip-text text-transparent">
+                      Go
+                    </span>
+                  </span>
+                  <span className="bg-orange-500/90 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 border border-orange-400 shadow-xs">
+                    <ShieldCheck className="w-3 h-3 text-amber-200" />
+                    Bruzzone Network
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-orange-100 font-semibold tracking-wide mt-0.5">
+                  {customTagline || 'La solución que buscas, está aquí.'}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-orange-100 hidden sm:block font-medium mt-0.5">
-              {customTagline || 'La solución que buscas, está aquí.'}
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Action Buttons */}
