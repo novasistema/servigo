@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, MapPin, Flame, ShieldCheck, Tag, Filter, X, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
-import { TradeCategory } from '../types';
+import { TradeCategory, CustomTradeOption } from '../types';
 
 interface SearchBarProps {
   searchQuery: string;
@@ -18,6 +18,7 @@ interface SearchBarProps {
   sortBy: 'rating' | 'jobs' | 'price';
   setSortBy: (sort: 'rating' | 'jobs' | 'price') => void;
   availableZones: string[];
+  customTrades?: CustomTradeOption[];
 }
 
 export const TRADE_OPTIONS: { id: TradeCategory | 'all'; label: string; icon: string; color: string }[] = [
@@ -50,8 +51,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   sortBy,
   setSortBy,
   availableZones,
+  customTrades = [],
 }) => {
   const [showFilters, setShowFilters] = React.useState(false);
+
+  const allTradeOptions = React.useMemo(() => {
+    const customOptions = customTrades.map((ct) => ({
+      id: ct.id,
+      label: ct.label,
+      icon: ct.icon || '🛠️',
+      color: ct.color || 'bg-purple-100 text-purple-700',
+    }));
+    return [...TRADE_OPTIONS, ...customOptions];
+  }, [customTrades]);
 
   const activeFilterCount =
     (selectedTrade !== 'all' ? 1 : 0) +
@@ -134,7 +146,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         {/* Trade Category Badges */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {TRADE_OPTIONS.map((trade) => {
+          {allTradeOptions.map((trade) => {
             const isSelected = selectedTrade === trade.id;
             return (
               <button

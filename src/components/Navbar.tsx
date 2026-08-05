@@ -1,12 +1,16 @@
 import React from 'react';
 import { Wrench, Search, UserPlus, Sparkles, ShoppingBag, Calendar, ShieldCheck, ChevronRight, Settings, Lock } from 'lucide-react';
 import { TabVisibilityConfig } from '../types';
+import servigoOfficialLogo from '../assets/logo.jpg';
+import servigoIcon from '../assets/icon.jpg';
 
 interface NavbarProps {
   activeTab: 'search' | 'register' | 'ai' | 'bruzzone' | 'bookings';
   setActiveTab: (tab: 'search' | 'register' | 'ai' | 'bruzzone' | 'bookings') => void;
   bookingCount: number;
   tabConfig?: TabVisibilityConfig;
+  customLogoUrl?: string;
+  customTagline?: string;
   onOpenAdminPanel?: () => void;
   isAdminAuthenticated?: boolean;
 }
@@ -16,9 +20,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   bookingCount,
   tabConfig = { search: true, register: true, sponsor: true, ai: true, bookings: true },
+  customLogoUrl,
+  customTagline,
   onOpenAdminPanel,
   isAdminAuthenticated = false,
 }) => {
+  const logoSrc = customLogoUrl || servigoOfficialLogo;
+
   return (
     <header className="bg-orange-600 text-white sticky top-0 z-40 shadow-lg">
       {/* Sponsor Top Strip */}
@@ -54,32 +62,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Main Brand & Logo Header */}
-      <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div 
           onClick={() => setActiveTab('search')}
           className="flex items-center gap-3 cursor-pointer group"
         >
-          {/* Logo Mark */}
-          <div className="relative w-11 h-11 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <defs>
-                <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="100%" stopColor="#0284c7" />
-                </linearGradient>
-                <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#16a34a" />
-                  <stop offset="100%" stopColor="#22c55e" />
-                </linearGradient>
-                <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ea580c" />
-                  <stop offset="100%" stopColor="#c2410c" />
-                </linearGradient>
-              </defs>
-              <path d="M 25 35 C 10 50, 20 80, 50 80 C 70 80, 85 65, 80 45" fill="none" stroke="url(#orangeGrad)" strokeWidth="11" strokeLinecap="round" />
-              <path d="M 75 65 C 90 50, 80 20, 50 20 C 30 20, 15 35, 20 55" fill="none" stroke="url(#blueGrad)" strokeWidth="11" strokeLinecap="round" />
-              <path d="M 30 52 L 45 68 L 78 30" fill="none" stroke="url(#greenGrad)" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+          {/* Logo Container / Mark */}
+          <div className="relative h-12 rounded-2xl bg-slate-950/20 p-1 flex items-center justify-center border border-white/20 group-hover:scale-105 transition-transform overflow-hidden shadow-md">
+            <img 
+              src={logoSrc} 
+              alt="ServiGo - La solución que buscas, está aquí." 
+              className="h-full w-auto max-w-[180px] object-contain rounded-xl"
+            />
           </div>
 
           <div>
@@ -93,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <p className="text-xs text-orange-100 hidden sm:block font-medium mt-0.5">
-              Conectando profesionales y servicios para el hogar.
+              {customTagline || 'La solución que buscas, está aquí.'}
             </p>
           </div>
         </div>

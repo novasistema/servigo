@@ -8,7 +8,15 @@ export type TradeCategory =
   | 'aire_acondicionado'
   | 'jardineria'
   | 'carpinteria'
-  | 'fletes';
+  | 'fletes'
+  | string;
+
+export interface CustomTradeOption {
+  id: string;
+  label: string;
+  icon?: string;
+  color?: string;
+}
 
 export interface Review {
   id: string;
@@ -88,6 +96,9 @@ export interface TabVisibilityConfig {
 export interface AppConfig {
   id: string;
   tabs: TabVisibilityConfig;
+  customLogoUrl?: string;
+  tagline?: string;
+  customTrades?: CustomTradeOption[];
   updatedAt: string;
 }
 

@@ -12,7 +12,7 @@ import { BookingHistoryList } from './components/BookingHistoryList';
 import { PromotedBannerCarousel } from './components/PromotedBannerCarousel';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { INITIAL_WORKERS, BRUZZONE_PRODUCTS } from './data/mockData';
-import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig } from './types';
+import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption } from './types';
 import {
   subscribeWorkers,
   subscribeBookings,
@@ -60,6 +60,7 @@ export default function App() {
 
   const [banners, setBanners] = useState<PromotedBanner[]>(INITIAL_BANNERS);
   const [tabConfig, setTabConfig] = useState<TabVisibilityConfig>(DEFAULT_TAB_CONFIG);
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
 
@@ -83,9 +84,12 @@ export default function App() {
       setBanners(firestoreBanners);
     });
 
-    const unsubscribeConfig = subscribeAppConfig((appConfig) => {
-      if (appConfig && appConfig.tabs) {
-        setTabConfig(appConfig.tabs);
+    const unsubscribeConfig = subscribeAppConfig((firestoreConfig) => {
+      if (firestoreConfig) {
+        setAppConfig(firestoreConfig);
+        if (firestoreConfig.tabs) {
+          setTabConfig(firestoreConfig.tabs);
+        }
       }
     });
 
@@ -299,6 +303,29 @@ export default function App() {
     setActiveTab('search');
   };
 
+  const handleAddNewTrade = async (newTrade: CustomTradeOption) => {
+    const currentCustomTrades = appConfig?.customTrades || [];
+    if (currentCustomTrades.some((t) => t.id === newTrade.id)) return;
+
+    const updatedCustomTrades = [...currentCustomTrades, newTrade];
+    const updatedConfig: AppConfig = {
+      id: 'settings',
+      tabs: tabConfig,
+      customLogoUrl: appConfig?.customLogoUrl,
+      tagline: appConfig?.tagline,
+      customTrades: updatedCustomTrades,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setAppConfig(updatedConfig);
+    try {
+      await saveAppConfigToFirestore(updatedConfig);
+      showToast(`¡Nuevo rubro "${newTrade.label}" creado e integrado!`);
+    } catch (err) {
+      console.error('Failed to save custom trade to Firestore:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-orange-500 selection:text-white">
       {/* Toast Notification */}
@@ -315,6 +342,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         bookingCount={bookings.length}
         tabConfig={tabConfig}
+        customLogoUrl={appConfig?.customLogoUrl}
+        customTagline={appConfig?.tagline}
         onOpenAdminPanel={() => setIsAdminModalOpen(true)}
         isAdminAuthenticated={isAdminAuthenticated}
       />
@@ -335,7 +364,6 @@ export default function App() {
 
             {/* Search Filters Bar */}
             <SearchBar
-
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               selectedTrade={selectedTrade}
@@ -351,6 +379,7 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               availableZones={availableZones}
+              customTrades={appConfig?.customTrades}
             />
 
             {/* Catalog Grid */}
@@ -422,7 +451,11 @@ export default function App() {
         {/* TAB 2: REGISTER WORKER PORTAL */}
         {activeTab === 'register' && (
           <div className="px-4 py-6">
-            <WorkerRegisterForm onRegisterSuccess={handleRegisterNewWorker} />
+            <WorkerRegisterForm
+              onRegisterSuccess={handleRegisterNewWorker}
+              customTrades={appConfig?.customTrades}
+              onAddNewTrade={handleAddNewTrade}
+            />
           </div>
         )}
 
@@ -496,10 +529,20 @@ export default function App() {
         isAdminAuthenticated={isAdminAuthenticated}
         setIsAdminAuthenticated={setIsAdminAuthenticated}
         tabConfig={tabConfig}
+        appConfig={appConfig}
+        onSaveAppConfig={async (updatedConfig) => {
+          await saveAppConfigToFirestore(updatedConfig);
+          setAppConfig(updatedConfig);
+          if (updatedConfig.tabs) {
+            setTabConfig(updatedConfig.tabs);
+          }
+        }}
         onSaveTabConfig={async (newTabs) => {
           const newConfig: AppConfig = {
             id: 'settings',
             tabs: newTabs,
+            customLogoUrl: appConfig?.customLogoUrl,
+            tagline: appConfig?.tagline,
             updatedAt: new Date().toISOString(),
           };
           await saveAppConfigToFirestore(newConfig);

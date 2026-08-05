@@ -44,6 +44,8 @@ interface AdminPanelModalProps {
   isAdminAuthenticated: boolean;
   setIsAdminAuthenticated: (val: boolean) => void;
   tabConfig: TabVisibilityConfig;
+  appConfig?: AppConfig | null;
+  onSaveAppConfig?: (config: AppConfig) => Promise<void>;
   onSaveTabConfig: (newTabs: TabVisibilityConfig) => Promise<void>;
   banners: PromotedBanner[];
   onSaveBanner: (banner: PromotedBanner) => Promise<void>;
@@ -61,6 +63,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   isAdminAuthenticated,
   setIsAdminAuthenticated,
   tabConfig,
+  appConfig,
+  onSaveAppConfig,
   onSaveTabConfig,
   banners,
   onSaveBanner,
@@ -76,6 +80,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'reset'>('tabs');
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
+  // Custom Logo and Branding states
+  const [logoUrlInput, setLogoUrlInput] = useState(appConfig?.customLogoUrl || '');
+  const [taglineInput, setTaglineInput] = useState(appConfig?.tagline || '');
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+
+  // Sync state when appConfig loads
+  React.useEffect(() => {
+    if (appConfig) {
+      setLogoUrlInput(appConfig.customLogoUrl || '');
+      setTaglineInput(appConfig.tagline || '');
+    }
+  }, [appConfig]);
+
   // Worker Management States
   const [workerSearchTerm, setWorkerSearchTerm] = useState('');
   const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
@@ -384,9 +401,95 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
             </div>
 
-            {/* TAB 1: VISIBILIDAD DE SOLAPAS */}
+            {/* TAB 1: VISIBILIDAD DE SOLAPAS Y LOGO */}
             {activeTab === 'tabs' && (
               <div className="space-y-6">
+                {/* LOGO & BRAND CUSTOMIZATION CARD */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h3 className="text-sm font-black text-white flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-amber-400" />
+                        Logo Oficial y Eslogan de la Web
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Carga una imagen de logo personalizada o mantén el Logo Oficial de ServiGo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        URL de Imagen del Logo (deja vacío para usar el Logo Oficial ServiGo)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={logoUrlInput}
+                          onChange={(e) => setLogoUrlInput(e.target.value)}
+                          placeholder="Ej: https://miservidor.com/mi-logo.png"
+                          className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                        {logoUrlInput && (
+                          <button
+                            type="button"
+                            onClick={() => setLogoUrlInput('')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl"
+                          >
+                            Restablecer a Oficial
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Eslogan o Subtítulo del Encabezado
+                      </label>
+                      <input
+                        type="text"
+                        value={taglineInput}
+                        onChange={(e) => setTaglineInput(e.target.value)}
+                        placeholder="La solución que buscas, está aquí."
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={isSavingBranding}
+                        onClick={async () => {
+                          try {
+                            setIsSavingBranding(true);
+                            const updatedConfig: AppConfig = {
+                              id: 'settings',
+                              tabs: localTabs,
+                              customLogoUrl: logoUrlInput.trim() || undefined,
+                              tagline: taglineInput.trim() || undefined,
+                              customTrades: appConfig?.customTrades,
+                              updatedAt: new Date().toISOString(),
+                            };
+                            if (onSaveAppConfig) {
+                              await onSaveAppConfig(updatedConfig);
+                            }
+                            showToast('🎨 ¡Logo y eslogan actualizados correctamente!');
+                          } catch (err) {
+                            showToast('❌ Error al guardar el logo.');
+                          } finally {
+                            setIsSavingBranding(false);
+                          }
+                        }}
+                        className="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95"
+                      >
+                        {isSavingBranding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        <span>Guardar Logo y Eslogan</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed space-y-1">
                   <p className="font-bold text-amber-400">💡 Instrucciones de Solapas:</p>
                   <p>
