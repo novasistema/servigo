@@ -30,6 +30,7 @@ import {
   DEFAULT_TAB_CONFIG,
   INITIAL_BANNERS,
 } from './lib/firebase';
+import { extractUniqueZones, normalizeZoneKey } from './lib/zoneUtils';
 import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck } from 'lucide-react';
 
 export default function App() {
@@ -150,14 +151,16 @@ export default function App() {
   const [onlyBruzzonePartner, setOnlyBruzzonePartner] = useState(false);
   const [sortBy, setSortBy] = useState<'rating' | 'jobs' | 'price'>('rating');
 
-  // Compute list of unique coverage zones across all workers
+  // Compute list of unique coverage zones across all workers, deduplicated case-insensitively
   const availableZones = useMemo(() => {
-    const zonesSet = new Set<string>();
+    const rawZonesList: string[] = [];
     workers.forEach((w) => {
-      zonesSet.add(w.location);
-      w.zones.forEach((z) => zonesSet.add(z));
+      if (w.location) rawZonesList.push(w.location);
+      if (w.zones && Array.isArray(w.zones)) {
+        w.zones.forEach((z) => rawZonesList.push(z));
+      }
     });
-    return Array.from(zonesSet).sort();
+    return extractUniqueZones(rawZonesList);
   }, [workers]);
 
   // Filter and Sort Workers
@@ -169,12 +172,15 @@ export default function App() {
           return false;
         }
 
-        // Zone filter
+        // Zone filter (case and accent insensitive matching)
         if (selectedZone !== 'all') {
-          const matchesLoc = w.location.toLowerCase().includes(selectedZone.toLowerCase());
-          const matchesZones = w.zones.some((z) =>
-            z.toLowerCase().includes(selectedZone.toLowerCase())
-          );
+          const selectedNorm = normalizeZoneKey(selectedZone);
+          const locNorm = normalizeZoneKey(w.location);
+          const matchesLoc = locNorm.includes(selectedNorm) || selectedNorm.includes(locNorm);
+          const matchesZones = (w.zones || []).some((z) => {
+            const zNorm = normalizeZoneKey(z);
+            return zNorm.includes(selectedNorm) || selectedNorm.includes(zNorm);
+          });
           if (!matchesLoc && !matchesZones) return false;
         }
 

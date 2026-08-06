@@ -22,6 +22,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { Worker, TradeCategory, CustomTradeOption } from '../types';
+import { formatZoneName } from '../lib/zoneUtils';
 
 interface WorkerRegisterFormProps {
   onRegisterSuccess: (newWorker: Worker) => void;
@@ -241,9 +242,10 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
     }
 
     const cleanWhatsapp = whatsapp.replace(/\D/g, '') || phone.replace(/\D/g, '');
+    const cleanLocation = formatZoneName(location) || 'Alejandro Roca';
     const zonesArray = zonesInput
       .split(',')
-      .map((z) => z.trim())
+      .map((z) => formatZoneName(z.trim()))
       .filter((z) => z.length > 0);
 
     const generatedWorker: Worker = {
@@ -259,8 +261,8 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
       matricula: matricula ? `Matrícula N° ${matricula}` : undefined,
       phone,
       whatsapp: cleanWhatsapp,
-      location,
-      zones: zonesArray.length > 0 ? zonesArray : [location],
+      location: cleanLocation,
+      zones: zonesArray.length > 0 ? zonesArray : [cleanLocation],
       rating: 5.0,
       reviewCount: 1,
       completedJobs: 1,
