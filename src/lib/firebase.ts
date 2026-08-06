@@ -13,8 +13,8 @@ import {
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig } from '../types';
-import { INITIAL_WORKERS } from '../data/mockData';
+import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop } from '../types';
+import { INITIAL_WORKERS, INITIAL_SHOPS } from '../data/mockData';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App lazily/safely
@@ -29,9 +29,11 @@ const WORKERS_COLLECTION = 'workers';
 const BOOKINGS_COLLECTION = 'bookings';
 const BANNERS_COLLECTION = 'banners';
 const APP_CONFIG_COLLECTION = 'app_config';
+const SHOPS_COLLECTION = 'shops';
 
 export const DEFAULT_TAB_CONFIG: TabVisibilityConfig = {
   search: true,
+  shops: true,
   register: true,
   sponsor: true,
   ai: true,
@@ -46,7 +48,7 @@ export const INITIAL_BANNERS: PromotedBanner[] = [
     badgeText: 'DESTACADO VIP',
     badgeColor: 'amber',
     imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=1200',
-    linkUrl: 'https://wa.me/5491133334444?text=Hola%20Roberto,%20vi%20tu%20anuncio%20destacado%20en%20ServiGo',
+    linkUrl: 'https://wa.me/5491133334444?text=Hola%20Roberto,%20vi%20tu%20anuncio%20destacado%20en%20ServiLibre',
     buttonText: 'Contactar por WhatsApp',
     active: true,
     priority: 1,
@@ -305,6 +307,60 @@ export async function deleteBannerFromFirestore(bannerId: string): Promise<void>
 }
 
 /**
+ * Subscribe to real-time updates for Shops & Businesses
+ */
+export function subscribeShops(onData: (shops: Shop[]) => void): () => void {
+  const shopsRef = collection(db, SHOPS_COLLECTION);
+
+  const unsubscribe = onSnapshot(
+    shopsRef,
+    (snapshot) => {
+      const shopsList = snapshot.docs.map((docSnap) => docSnap.data() as Shop);
+      // If collection is empty, seed initial shops
+      if (snapshot.empty) {
+        INITIAL_SHOPS.forEach((shop) => saveShopToFirestore(shop).catch(console.error));
+        onData(INITIAL_SHOPS);
+      } else {
+        onData(shopsList);
+      }
+    },
+    (error) => {
+      console.error('Error in shops listener:', error);
+      onData(INITIAL_SHOPS);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update shop in Firestore
+ */
+export async function saveShopToFirestore(shop: Shop): Promise<void> {
+  try {
+    const cleanShop = sanitizeForFirestore(shop);
+    const shopRef = doc(db, SHOPS_COLLECTION, cleanShop.id);
+    await setDoc(shopRef, cleanShop, { merge: true });
+  } catch (error) {
+    console.error('Error saving shop to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete shop from Firestore
+ */
+export async function deleteShopFromFirestore(shopId: string): Promise<void> {
+  try {
+    const shopRef = doc(db, SHOPS_COLLECTION, shopId);
+    await deleteDoc(shopRef);
+  } catch (error) {
+    console.error('Error deleting shop from Firestore:', error);
+    throw error;
+  }
+}
+
+/**
  * Subscribe to App Configuration (Tab visibility)
  */
 export function subscribeAppConfig(onData: (config: AppConfig) => void): () => void {
@@ -369,6 +425,7 @@ export async function clearAllFirestoreData(): Promise<void> {
     await clearCollection(WORKERS_COLLECTION);
     await clearCollection(BOOKINGS_COLLECTION);
     await clearCollection(BANNERS_COLLECTION);
+    await clearCollection(SHOPS_COLLECTION);
 
     // Reset app config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
@@ -384,13 +441,14 @@ export async function clearAllFirestoreData(): Promise<void> {
 }
 
 /**
- * Reset data to factory defaults (Reload initial mock workers, initial banners, clear bookings)
+ * Reset data to factory defaults (Reload initial mock workers, initial banners, initial shops, clear bookings)
  */
 export async function resetFirestoreToDefaults(): Promise<void> {
   try {
     await clearCollection(WORKERS_COLLECTION);
     await clearCollection(BOOKINGS_COLLECTION);
     await clearCollection(BANNERS_COLLECTION);
+    await clearCollection(SHOPS_COLLECTION);
 
     // Seed workers
     const workerPromises = INITIAL_WORKERS.map((w) => setDoc(doc(db, WORKERS_COLLECTION, w.id), sanitizeForFirestore(w)));
@@ -399,6 +457,10 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     // Seed banners
     const bannerPromises = INITIAL_BANNERS.map((b) => setDoc(doc(db, BANNERS_COLLECTION, b.id), sanitizeForFirestore(b)));
     await Promise.all(bannerPromises);
+
+    // Seed shops
+    const shopPromises = INITIAL_SHOPS.map((s) => setDoc(doc(db, SHOPS_COLLECTION, s.id), sanitizeForFirestore(s)));
+    await Promise.all(shopPromises);
 
     // Reset config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');

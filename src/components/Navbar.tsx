@@ -1,17 +1,18 @@
 import React from 'react';
-import { Wrench, Search, UserPlus, Sparkles, ShoppingBag, Calendar, ShieldCheck, ChevronRight, Settings, Lock } from 'lucide-react';
+import { Wrench, Search, UserPlus, Sparkles, ShoppingBag, Calendar, ShieldCheck, ChevronRight, Settings, FileText, Store } from 'lucide-react';
 import { TabVisibilityConfig } from '../types';
 import servigoOfficialLogo from '../assets/logo.jpg';
 import servigoIcon from '../assets/icon.jpg';
 
 interface NavbarProps {
-  activeTab: 'search' | 'register' | 'ai' | 'bruzzone' | 'bookings';
-  setActiveTab: (tab: 'search' | 'register' | 'ai' | 'bruzzone' | 'bookings') => void;
+  activeTab: 'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings';
+  setActiveTab: (tab: 'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings') => void;
   bookingCount: number;
   tabConfig?: TabVisibilityConfig;
   customLogoUrl?: string;
   customTagline?: string;
   onOpenAdminPanel?: () => void;
+  onOpenPdfGuide?: () => void;
   isAdminAuthenticated?: boolean;
 }
 
@@ -19,10 +20,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   bookingCount,
-  tabConfig = { search: true, register: true, sponsor: true, ai: true, bookings: true },
+  tabConfig = { search: true, shops: true, register: true, sponsor: true, ai: true, bookings: true },
   customLogoUrl,
   customTagline,
   onOpenAdminPanel,
+  onOpenPdfGuide,
   isAdminAuthenticated = false,
 }) => {
   const [logoError, setLogoError] = React.useState(false);
@@ -45,7 +47,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </span>
           <span className="truncate">Ferretería Bruzzone • Red de Profesionales y Descuentos en Materiales</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onOpenPdfGuide && (
+            <button
+              onClick={onOpenPdfGuide}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] hover:bg-amber-300 transition-all shadow-xs"
+              title="Descargar o ver la guía en PDF de cómo registrarse"
+            >
+              <FileText className="w-3 h-3 text-slate-950" />
+              <span>📄 Guía PDF Registro</span>
+            </button>
+          )}
+
           <a
             href="https://ferreteriabruzzone.com.ar"
             target="_blank"
@@ -84,44 +97,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             />
           ) : (
             <div className="flex items-center gap-3">
-              {/* Dynamic Brand Logo Emblem */}
-              <div className="relative w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-sky-400 p-0.5 shadow-md group-hover:scale-105 transition-transform">
-                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 via-sky-400/20 to-emerald-400/30" />
-                  <svg
-                    className="w-6 h-6 relative z-10 text-white"
-                    viewBox="0 0 40 40"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 20C12 15.5817 15.5817 12 20 12C23.5 12 26.5 14.2 27.5 17.3"
-                      stroke="#f97316"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M28 20C28 24.4183 24.4183 28 20 28C16.5 28 13.5 25.8 12.5 22.7"
-                      stroke="#38bdf8"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M10 22L16 28L30 11"
-                      stroke="#34d399"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M24 11H30V17"
-                      stroke="#34d399"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
+              {/* Clean Brand Emblem Icon */}
+              <div className="p-2.5 rounded-2xl bg-amber-400 text-slate-950 font-black shadow-md group-hover:scale-105 transition-transform shrink-0 flex items-center justify-center border border-amber-300">
+                <Wrench className="w-6 h-6 text-slate-950" />
               </div>
 
               {/* Brand Name Typography */}
@@ -129,9 +107,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none">
                     Servi
-                    <span className="bg-gradient-to-r from-sky-300 via-amber-200 to-emerald-300 bg-clip-text text-transparent">
+                    <span className="text-amber-300">
                       Go
                     </span>
+                    <span className="text-amber-300 text-xl font-black ml-0.5">+</span>
                   </span>
                   <span className="bg-orange-500/90 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 border border-orange-400 shadow-xs">
                     <ShieldCheck className="w-3 h-3 text-amber-200" />
@@ -139,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-orange-100 font-semibold tracking-wide mt-0.5">
-                  {customTagline || 'La solución que buscas, está aquí.'}
+                  {customTagline || 'La solución que buscas, está aquí'}
                 </p>
               </div>
             </div>
@@ -198,6 +177,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Search className="w-4 h-4" />
               <span>Buscar Oficio</span>
+            </button>
+          )}
+
+          {tabConfig.shops && (
+            <button
+              onClick={() => setActiveTab('shops')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                activeTab === 'shops'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Store className="w-4 h-4 text-blue-500" />
+              <span>Comercios & Negocios</span>
+              <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
+                Nuevo
+              </span>
             </button>
           )}
 

@@ -1,5 +1,5 @@
 /**
- * Zone Normalization and Deduplication Utilities for ServiGo
+ * Zone Normalization and Deduplication Utilities for ServiLibre
  */
 
 /**

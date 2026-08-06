@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker } from '../types';
+import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop } from '../types';
 import {
   X,
   Lock,
@@ -28,6 +28,7 @@ import {
   Clock,
   UserCheck,
   RefreshCw,
+  Store,
   Users,
   Search,
   Phone,
@@ -51,7 +52,11 @@ interface AdminPanelModalProps {
   onSaveBanner: (banner: PromotedBanner) => Promise<void>;
   onDeleteBanner: (bannerId: string) => Promise<void>;
   workers: Worker[];
+  onSaveWorker?: (worker: Worker) => Promise<void>;
   onDeleteWorker: (workerId: string) => Promise<void>;
+  shops?: Shop[];
+  onSaveShop?: (shop: Shop) => Promise<void>;
+  onDeleteShop?: (shopId: string) => Promise<void>;
   onClearAllData?: () => Promise<void>;
   onResetToDefaults?: () => Promise<void>;
   showToast: (msg: string) => void;
@@ -70,19 +75,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onSaveBanner,
   onDeleteBanner,
   workers,
+  onSaveWorker,
   onDeleteWorker,
+  shops = [],
+  onSaveShop,
+  onDeleteShop,
   onClearAllData,
   onResetToDefaults,
   showToast,
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'reset'>('tabs');
+  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'shops' | 'reset'>('tabs');
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
   // Custom Logo and Branding states
   const [logoUrlInput, setLogoUrlInput] = useState(appConfig?.customLogoUrl || '');
   const [taglineInput, setTaglineInput] = useState(appConfig?.tagline || '');
+  const [ferreteroTitleInput, setFerreteroTitleInput] = useState(appConfig?.ferreteroPartnerTitle || 'Socio Ferretería Bruzzone');
+  const [ferreteroDiscountInput, setFerreteroDiscountInput] = useState(appConfig?.ferreteroPartnerDiscountText || '10% OFF en mano de obra con insumos Bruzzone');
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
   // Sync state when appConfig loads
@@ -90,6 +101,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     if (appConfig) {
       setLogoUrlInput(appConfig.customLogoUrl || '');
       setTaglineInput(appConfig.tagline || '');
+      setFerreteroTitleInput(appConfig.ferreteroPartnerTitle || 'Socio Ferretería Bruzzone');
+      setFerreteroDiscountInput(appConfig.ferreteroPartnerDiscountText || '10% OFF en mano de obra con insumos Bruzzone');
     }
   }, [appConfig]);
 
@@ -97,6 +110,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [workerSearchTerm, setWorkerSearchTerm] = useState('');
   const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
   const [isDeletingWorker, setIsDeletingWorker] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [isSavingWorker, setIsSavingWorker] = useState(false);
 
   // Reset Confirmation States
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
@@ -336,10 +351,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           /* AUTHENTICATED PANEL BODY */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Tab Navigation Switches */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setActiveTab('tabs')}
-                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'tabs'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -351,7 +366,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               <button
                 onClick={() => setActiveTab('banners')}
-                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'banners'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -363,7 +378,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               <button
                 onClick={() => setActiveTab('subscriptions')}
-                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'subscriptions'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -378,26 +393,38 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               <button
                 onClick={() => setActiveTab('workers')}
-                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'workers'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>4. Trabajadores ({workers.length})</span>
+                <span>4. Perfiles ({workers.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('shops')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'shops'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>5. Comercios ({shops.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('reset')}
-                className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'reset'
                     ? 'bg-rose-600 text-white shadow-md'
                     : 'text-rose-400 hover:bg-rose-500/10'
                 }`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>5. Borrar Todo</span>
+                <span>6. Borrar</span>
               </button>
             </div>
 
@@ -456,6 +483,39 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       />
                     </div>
 
+                    <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                      <h4 className="text-xs font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                        <Store className="w-3.5 h-3.5 text-orange-400" />
+                        Auspiciador Oficial: Socio Ferretería Bruzzone (FB)
+                      </h4>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1">
+                          Título de la Insignia de Socio
+                        </label>
+                        <input
+                          type="text"
+                          value={ferreteroTitleInput}
+                          onChange={(e) => setFerreteroTitleInput(e.target.value)}
+                          placeholder="Socio Ferretería Bruzzone"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1">
+                          Descripción del Descuento
+                        </label>
+                        <input
+                          type="text"
+                          value={ferreteroDiscountInput}
+                          onChange={(e) => setFerreteroDiscountInput(e.target.value)}
+                          placeholder="10% OFF en mano de obra con insumos Bruzzone"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+
                     <div className="pt-2 flex justify-end">
                       <button
                         type="button"
@@ -468,15 +528,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               tabs: localTabs,
                               customLogoUrl: logoUrlInput.trim() || undefined,
                               tagline: taglineInput.trim() || undefined,
+                              ferreteroPartnerTitle: ferreteroTitleInput.trim() || undefined,
+                              ferreteroPartnerDiscountText: ferreteroDiscountInput.trim() || undefined,
                               customTrades: appConfig?.customTrades,
                               updatedAt: new Date().toISOString(),
                             };
                             if (onSaveAppConfig) {
                               await onSaveAppConfig(updatedConfig);
                             }
-                            showToast('🎨 ¡Logo y eslogan actualizados correctamente!');
+                            showToast('🎨 ¡Marca y parámetros de Ferretería Bruzzone actualizados!');
                           } catch (err) {
-                            showToast('❌ Error al guardar el logo.');
+                            showToast('❌ Error al guardar la configuración.');
                           } finally {
                             setIsSavingBranding(false);
                           }
@@ -484,7 +546,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         className="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95"
                       >
                         {isSavingBranding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        <span>Guardar Logo y Eslogan</span>
+                        <span>Guardar Ajustes de Marca y Ferretería</span>
                       </button>
                     </div>
                   </div>
@@ -500,6 +562,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <div className="space-y-3">
                   {[
                     { key: 'search', label: '🔍 Buscar Oficios (Index / Catálogo)', desc: 'Vista principal con el buscador de profesionales' },
+                    { key: 'shops', label: '🏪 Comercios & Negocios (Ferreterías, Talleres, Corralones)', desc: 'Guía comercial de la zona con mapa, WhatsApp y descuentos' },
                     { key: 'register', label: '👷 Soy Trabajador (Publicar Perfil)', desc: 'Formulario de registro para nuevos prestadores' },
                     { key: 'sponsor', label: '🏬 Ferretería Bruzzone (Tienda Oficial)', desc: 'Espacio patrocinado con catálogo de materiales' },
                     { key: 'ai', label: '🤖 Diagnóstico IA (Asistente Técnico)', desc: 'Evaluador automatizado de presupuestos e insumos' },
@@ -1161,23 +1224,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       >
                         <div className="flex items-start gap-3">
                           <img
-                            src={w.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                            src={w.avatar || (w as any).photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                             alt={w.name}
                             className="w-12 h-12 rounded-xl object-cover border border-slate-800 shrink-0"
                           />
                           <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center justify-between gap-1 flex-wrap">
                               <h4 className="text-xs font-black text-white truncate">{w.name}</h4>
-                              {w.verified && (
-                                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-                                  <ShieldCheck className="w-2.5 h-2.5" />
-                                  Verificado
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {w.ferreteroPartner && (
+                                  <span className="bg-orange-500/20 text-orange-300 border border-orange-500/40 text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                    FB 10% OFF
+                                  </span>
+                                )}
+                                {w.verified && (
+                                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                    <ShieldCheck className="w-2.5 h-2.5" />
+                                    Verificado
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1 truncate">
                               <Briefcase className="w-3 h-3 text-slate-500 shrink-0" />
-                              {w.trade}
+                              {w.tradeTitle || w.trade}
                             </p>
                             <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
                               <MapPin className="w-2.5 h-2.5 text-slate-500 shrink-0" />
@@ -1193,16 +1263,157 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1 text-[11px] text-amber-400 font-bold">
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            <span>{w.rating.toFixed(1)}</span>
-                            <span className="text-[10px] text-slate-500 font-normal">({w.reviewsCount})</span>
+                            <span>{w.rating ? w.rating.toFixed(1) : '5.0'}</span>
+                            <span className="text-[10px] text-slate-500 font-normal">({w.reviewCount ?? (w as any).reviewsCount ?? 1})</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setEditingWorker(w)}
+                              className="py-1.5 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+
+                            <button
+                              onClick={() => setWorkerToDelete(w)}
+                              className="py-1.5 px-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Borrar</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: COMERCIOS Y NEGOCIOS DE LA ZONA */}
+            {activeTab === 'shops' && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-white flex items-center gap-2">
+                        <Store className="w-4 h-4 text-orange-400" />
+                        Gestión de Comercios, Ferreterías y Talleres ({shops.length})
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Administra negocios adheridos, aprueba/verifica publicaciones y activa banderas de descuento.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {shops.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+                    <Store className="w-12 h-12 text-slate-700 mx-auto" />
+                    <p className="text-sm text-slate-400 font-bold">
+                      No hay comercios registrados en la base de datos.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {shops.map((s) => (
+                      <div
+                        key={s.id}
+                        className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <img
+                            src={s.imageUrl || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=150'}
+                            alt={s.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-800 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1 flex-wrap">
+                              <h4 className="text-xs font-black text-white truncate">{s.name}</h4>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {s.discountPartner && (
+                                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0">
+                                    % Descuento
+                                  </span>
+                                )}
+                                {s.verified && (
+                                  <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                    <ShieldCheck className="w-2.5 h-2.5" />
+                                    Verificado
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <p className="text-[11px] font-bold text-orange-400 truncate">
+                              {s.categoryTitle || s.category} • {s.location}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              📍 {s.address} | 📞 {s.phone}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quick action toggles for Admin */}
+                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (onSaveShop) {
+                                  await onSaveShop({ ...s, verified: !s.verified });
+                                  showToast(
+                                    !s.verified
+                                      ? `✅ ${s.name} marcado como Verificado.`
+                                      : `ℹ️ Verificación removida de ${s.name}.`
+                                  );
+                                }
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                s.verified
+                                  ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
+                                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {s.verified ? '✓ Verificado' : '+ Verificar'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (onSaveShop) {
+                                  await onSaveShop({
+                                    ...s,
+                                    discountPartner: !s.discountPartner,
+                                    discountText: !s.discountPartner ? '10% OFF para usuarios ServiGo' : undefined,
+                                  });
+                                  showToast(`Insignia de Descuento actualizada para ${s.name}`);
+                                }
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                s.discountPartner
+                                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {s.discountPartner ? '🏷️ Socio OFF' : '+ Beneficio OFF'}
+                            </button>
                           </div>
 
                           <button
-                            onClick={() => setWorkerToDelete(w)}
-                            className="py-1.5 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+                            type="button"
+                            onClick={async () => {
+                              if (confirm(`¿Eliminar el comercio "${s.name}"?`) && onDeleteShop) {
+                                await onDeleteShop(s.id);
+                                showToast(`Comercio "${s.name}" eliminado.`);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all"
+                            title="Eliminar comercio"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Eliminar Trabajador</span>
                           </button>
                         </div>
                       </div>
@@ -1212,7 +1423,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* TAB 5: REINICIAR Y BORRAR DATOS */}
+            {/* TAB 6: REINICIAR Y BORRAR DATOS */}
             {activeTab === 'reset' && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="bg-rose-950/40 border border-rose-500/30 rounded-3xl p-5 sm:p-6 space-y-4 text-rose-100">
@@ -1284,7 +1495,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     Nota para el Administrador:
                   </span>
                   <p>
-                    Las acciones ejecutadas en esta pestaña se sincronizan de inmediato en tiempo real con Cloud Firestore y se reflejan en todos los usuarios conectados a ServiGo.
+                    Las acciones ejecutadas en esta pestaña se sincronizan de inmediato en tiempo real con Cloud Firestore y se reflejan en todos los usuarios conectados a ServiLibre.
                   </p>
                 </div>
               </div>
@@ -1467,6 +1678,271 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <Trash2 className="w-4 h-4" />
                 )}
                 <span>Sí, Eliminar Definitivamente</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT WORKER MODAL */}
+      {editingWorker && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 space-y-5 text-white shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-amber-400" />
+                Editar Perfil de Trabajador: {editingWorker.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingWorker(null)}
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Name */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Nombre Completo *</label>
+                <input
+                  type="text"
+                  value={editingWorker.name}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Trade */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Rubro Principal *</label>
+                <input
+                  type="text"
+                  value={editingWorker.trade}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, trade: e.target.value as any })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Trade Title */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Subtítulo / Especialidad</label>
+                <input
+                  type="text"
+                  value={editingWorker.tradeTitle || ''}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, tradeTitle: e.target.value })}
+                  placeholder="Ej: Electricista Matriculado e Industrial"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Matricula */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Matrícula (opcional)</label>
+                <input
+                  type="text"
+                  value={editingWorker.matricula || ''}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, matricula: e.target.value })}
+                  placeholder="Ej: Matrícula N° 84920"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Teléfono</label>
+                <input
+                  type="text"
+                  value={editingWorker.phone}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, phone: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* WhatsApp */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">WhatsApp (Números con prefijo)</label>
+                <input
+                  type="text"
+                  value={editingWorker.whatsapp}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, whatsapp: e.target.value })}
+                  placeholder="Ej: 5493584123456"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Localidad Principal</label>
+                <input
+                  type="text"
+                  value={editingWorker.location}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, location: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Zones */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Zonas Cobertura (Separadas por coma)</label>
+                <input
+                  type="text"
+                  value={(editingWorker.zones || []).join(', ')}
+                  onChange={(e) => setEditingWorker({
+                    ...editingWorker,
+                    zones: e.target.value.split(',').map((z) => z.trim()).filter((z) => z.length > 0)
+                  })}
+                  placeholder="Ej: Alejandro Roca, Río Cuarto, Los Cisnes"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Hourly Rate */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Tarifa por Hora ($ ARS)</label>
+                <input
+                  type="number"
+                  value={editingWorker.hourlyRate || 0}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, hourlyRate: Number(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Visit Fee */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Visita / Presupuesto ($ ARS)</label>
+                <input
+                  type="number"
+                  value={editingWorker.visitFee || 0}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, visitFee: Number(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Avatar URL */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">URL Foto de Perfil</label>
+                <input
+                  type="text"
+                  value={editingWorker.avatar || ''}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, avatar: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Bio */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Biografía / Presentación</label>
+                <textarea
+                  rows={2}
+                  value={editingWorker.bio || ''}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, bio: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Checkboxes Section */}
+              <div className="sm:col-span-2 space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px]">
+                  Insignias y Estados Especiales
+                </h4>
+
+                {/* Socio Ferreteria Bruzzone FB */}
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-orange-300 flex items-center gap-1.5">
+                      <span className="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded font-black">FB</span>
+                      Socio Ferretería Bruzzone (10% OFF Mano de Obra)
+                    </span>
+                    <p className="text-[11px] text-slate-400">
+                      Otorga 10% de descuento en mano de obra con la compra de insumos en Ferretería Bruzzone.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingWorker.ferreteroPartner || false}
+                    onChange={(e) => setEditingWorker({ ...editingWorker, ferreteroPartner: e.target.checked })}
+                    className="w-5 h-5 accent-orange-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                {/* Verified */}
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      Verificado por ServiLibre
+                    </span>
+                    <p className="text-[11px] text-slate-400">Muestra la tilde de perfil verificado.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingWorker.verified || false}
+                    onChange={(e) => setEditingWorker({ ...editingWorker, verified: e.target.checked })}
+                    className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                {/* 24h urgencies */}
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-rose-400 flex items-center gap-1.5">
+                      🚨 Guardia y Urgencias 24hs
+                    </span>
+                    <p className="text-[11px] text-slate-400">Destaca al profesional en los filtros de urgencias.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingWorker.availability?.urgencies24h || false}
+                    onChange={(e) => setEditingWorker({
+                      ...editingWorker,
+                      availability: {
+                        ...editingWorker.availability,
+                        urgencies24h: e.target.checked
+                      }
+                    })}
+                    className="w-5 h-5 accent-rose-500 rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingWorker(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingWorker}
+                onClick={async () => {
+                  if (!editingWorker.name.trim()) {
+                    showToast('El nombre no puede estar vacío');
+                    return;
+                  }
+                  try {
+                    setIsSavingWorker(true);
+                    if (onSaveWorker) {
+                      await onSaveWorker(editingWorker);
+                    }
+                    setEditingWorker(null);
+                    showToast(`¡Perfil de "${editingWorker.name}" guardado correctamente!`);
+                  } catch (err) {
+                    console.error(err);
+                    showToast('❌ Error al guardar los datos del trabajador.');
+                  } finally {
+                    setIsSavingWorker(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95"
+              >
+                {isSavingWorker ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Guardar Cambios del Trabajador</span>
               </button>
             </div>
           </div>

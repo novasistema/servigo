@@ -19,7 +19,8 @@ import {
   RefreshCw,
   CameraOff,
   Check,
-  RotateCcw
+  RotateCcw,
+  FileText
 } from 'lucide-react';
 import { Worker, TradeCategory, CustomTradeOption } from '../types';
 import { formatZoneName } from '../lib/zoneUtils';
@@ -28,12 +29,14 @@ interface WorkerRegisterFormProps {
   onRegisterSuccess: (newWorker: Worker) => void;
   customTrades?: CustomTradeOption[];
   onAddNewTrade?: (newTrade: CustomTradeOption) => Promise<void>;
+  onOpenPdfGuide?: () => void;
 }
 
 export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   onRegisterSuccess,
   customTrades = [],
   onAddNewTrade,
+  onOpenPdfGuide,
 }) => {
   const [step, setStep] = useState<number>(1);
 
@@ -299,11 +302,24 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   return (
     <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm space-y-6">
       {/* Header */}
-      <div className="text-center space-y-2 border-b border-slate-200 pb-5">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold">
-          <Wrench className="w-3.5 h-3.5" />
-          <span>Ingreso para Trabajadores y Profesionales</span>
+      <div className="text-center space-y-3 border-b border-slate-200 pb-5">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold">
+            <Wrench className="w-3.5 h-3.5" />
+            <span>Ingreso para Trabajadores y Profesionales</span>
+          </div>
+
+          {onOpenPdfGuide && (
+            <button
+              onClick={onOpenPdfGuide}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-xs active:scale-95"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Ver/Descargar Manual PDF</span>
+            </button>
+          )}
         </div>
+        
         <h2 className="text-2xl font-black text-slate-900">Únete a ServiGo</h2>
         <p className="text-xs text-slate-500 max-w-lg mx-auto font-medium">
           Publica tus datos, especialidad, disponibilidad y tarifas. Consigue clientes locales de forma rápida y segura con el auspicio de <strong>Ferretería Bruzzone</strong>.

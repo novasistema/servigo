@@ -11,11 +11,16 @@ import { AiAssistant } from './components/AiAssistant';
 import { BookingHistoryList } from './components/BookingHistoryList';
 import { PromotedBannerCarousel } from './components/PromotedBannerCarousel';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import { INITIAL_WORKERS, BRUZZONE_PRODUCTS } from './data/mockData';
-import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption } from './types';
+import { RegistrationPdfGuideModal } from './components/RegistrationPdfGuideModal';
+import { ShopsSection } from './components/ShopsSection';
+import { INITIAL_WORKERS, BRUZZONE_PRODUCTS, INITIAL_SHOPS } from './data/mockData';
+import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop } from './types';
 import {
   subscribeWorkers,
   subscribeBookings,
+  subscribeShops,
+  saveShopToFirestore,
+  deleteShopFromFirestore,
   saveWorkerToFirestore,
   deleteWorkerFromFirestore,
   saveReviewToFirestore,
@@ -30,8 +35,8 @@ import {
   DEFAULT_TAB_CONFIG,
   INITIAL_BANNERS,
 } from './lib/firebase';
-import { extractUniqueZones, normalizeZoneKey } from './lib/zoneUtils';
-import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck } from 'lucide-react';
+import { extractUniqueZones, normalizeZoneKey, formatZoneName } from './lib/zoneUtils';
+import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck, FileText } from 'lucide-react';
 
 export default function App() {
   // Persistence State synced with Cloud Firestore
@@ -60,10 +65,12 @@ export default function App() {
   });
 
   const [banners, setBanners] = useState<PromotedBanner[]>(INITIAL_BANNERS);
+  const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
   const [tabConfig, setTabConfig] = useState<TabVisibilityConfig>(DEFAULT_TAB_CONFIG);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [isPdfGuideOpen, setIsPdfGuideOpen] = useState<boolean>(false);
 
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
 
@@ -78,6 +85,11 @@ export default function App() {
     const unsubscribeBookings = subscribeBookings((firestoreBookings) => {
       setBookings(firestoreBookings);
       localStorage.setItem('servigo_bookings_v1', JSON.stringify(firestoreBookings));
+      setIsCloudSynced(true);
+    });
+
+    const unsubscribeShops = subscribeShops((firestoreShops) => {
+      setShops(firestoreShops);
       setIsCloudSynced(true);
     });
 
@@ -97,6 +109,7 @@ export default function App() {
     return () => {
       unsubscribeWorkers();
       unsubscribeBookings();
+      unsubscribeShops();
       unsubscribeBanners();
       unsubscribeConfig();
     };
@@ -113,7 +126,7 @@ export default function App() {
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<
-    'search' | 'register' | 'ai' | 'bruzzone' | 'bookings'
+    'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings'
   >('search');
 
   // Fallback active tab if current tab gets disabled by admin
@@ -233,6 +246,33 @@ export default function App() {
   ]);
 
   // Handlers
+  const handleSaveShop = async (shop: Shop) => {
+    // Optimistic UI update
+    setShops((prev) => {
+      const exists = prev.some((s) => s.id === shop.id);
+      if (exists) {
+        return prev.map((s) => (s.id === shop.id ? shop : s));
+      }
+      return [shop, ...prev];
+    });
+    showToast(`¡Comercio "${shop.name}" guardado en la red ServiGo!`);
+
+    try {
+      await saveShopToFirestore(shop);
+    } catch (err) {
+      console.error('Failed to save shop to Firestore:', err);
+    }
+  };
+
+  const handleDeleteShop = async (shopId: string) => {
+    setShops((prev) => prev.filter((s) => s.id !== shopId));
+    try {
+      await deleteShopFromFirestore(shopId);
+    } catch (err) {
+      console.error('Failed to delete shop from Firestore:', err);
+    }
+  };
+
   const handleRegisterNewWorker = async (newWorker: Worker) => {
     // Optimistic UI update
     setWorkers((prev) => [newWorker, ...prev]);
@@ -351,6 +391,7 @@ export default function App() {
         customLogoUrl={appConfig?.customLogoUrl}
         customTagline={appConfig?.tagline}
         onOpenAdminPanel={() => setIsAdminModalOpen(true)}
+        onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
         isAdminAuthenticated={isAdminAuthenticated}
       />
 
@@ -454,13 +495,26 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: REGISTER WORKER PORTAL */}
+        {/* TAB 2: COMERCIOS & NEGOCIOS LOCALES */}
+        {activeTab === 'shops' && (
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <ShopsSection
+              shops={shops}
+              selectedZone={selectedZone}
+              onZoneSelect={setSelectedZone}
+              onSaveShop={handleSaveShop}
+            />
+          </div>
+        )}
+
+        {/* TAB 3: REGISTER WORKER PORTAL */}
         {activeTab === 'register' && (
           <div className="px-4 py-6">
             <WorkerRegisterForm
               onRegisterSuccess={handleRegisterNewWorker}
               customTrades={appConfig?.customTrades}
               onAddNewTrade={handleAddNewTrade}
+              onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
             />
           </div>
         )}
@@ -562,15 +616,36 @@ export default function App() {
           await deleteBannerFromFirestore(bannerId);
         }}
         workers={workers}
+        onSaveWorker={async (updatedWorker) => {
+          const formattedWorker: Worker = {
+            ...updatedWorker,
+            location: formatZoneName(updatedWorker.location),
+            zones: extractUniqueZones(updatedWorker.zones || []),
+          };
+          setWorkers((prev) =>
+            prev.map((w) => (w.id === formattedWorker.id ? formattedWorker : w))
+          );
+          try {
+            await saveWorkerToFirestore(formattedWorker);
+            showToast(`¡Perfil de ${formattedWorker.name} actualizado en Firestore!`);
+          } catch (err) {
+            console.error('Failed to update worker in Firestore:', err);
+            showToast('❌ Error al actualizar trabajador.');
+          }
+        }}
         onDeleteWorker={async (workerId) => {
           await deleteWorkerFromFirestore(workerId);
         }}
+        shops={shops}
+        onSaveShop={handleSaveShop}
+        onDeleteShop={handleDeleteShop}
         onClearAllData={async () => {
           await clearAllFirestoreData();
           localStorage.removeItem('servigo_workers_v1');
           localStorage.removeItem('servigo_bookings_v1');
           setWorkers([]);
           setBookings([]);
+          setShops([]);
           setBanners([]);
           setTabConfig(DEFAULT_TAB_CONFIG);
           showToast('💥 ¡Todos los datos han sido borrados por completo! Sistema iniciado en blanco.');
@@ -589,11 +664,11 @@ export default function App() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-white font-black text-lg">
-              <span>Servi<span className="text-orange-500">Go</span></span>
-              <span className="text-xs font-normal text-slate-500">• Red de Servicios Domésticos</span>
+              <span>Servi<span className="text-amber-400">Go</span></span>
+              <span className="text-xs font-normal text-slate-500">• Red de Servicios y Comercios</span>
             </div>
             <p className="text-slate-400 text-xs">
-              Plataforma móvil de búsqueda rápida y contratación segura de gasistas, electricistas, plomeros y especialistas del hogar.
+              Plataforma móvil de búsqueda rápida y contratación de profesionales, ferreterías, talleres mecánicos y comercios locales.
             </p>
           </div>
 
@@ -620,8 +695,16 @@ export default function App() {
           </div>
 
           <div className="text-left md:text-right space-y-2 text-slate-400">
-            <p>© {new Date().getFullYear()} ServiGo App • Todos los derechos reservados.</p>
-            <div className="flex items-center justify-start md:justify-end gap-2">
+            <p>© {new Date().getFullYear()} ServiGo • La solución que buscas, está aquí.</p>
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
+              <button
+                onClick={() => setIsPdfGuideOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all shadow-xs"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>📄 Descargar Guía PDF</span>
+              </button>
+
               <button
                 onClick={() => setIsAdminModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-xs"
@@ -634,6 +717,11 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Registration PDF Guide Modal */}
+      <RegistrationPdfGuideModal
+        isOpen={isPdfGuideOpen}
+        onClose={() => setIsPdfGuideOpen(false)}
+      />
     </div>
   );
 }

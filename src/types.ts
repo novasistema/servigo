@@ -42,7 +42,7 @@ export interface Worker {
   rating: number;
   reviewCount: number;
   completedJobs: number;
-  verified: boolean; // Verified by ServiGo / Ferretería Bruzzone
+  verified: boolean; // Verified by ServiLibre / Ferretería Bruzzone
   ferreteroPartner: boolean; // Purchases at Ferretería Bruzzone & gives 10% labor discount
   hourlyRate: number; // ARS
   visitFee: number; // ARS
@@ -85,8 +85,34 @@ export interface HardwareProduct {
   storeUrl: string;
 }
 
+export interface Shop {
+  id: string;
+  name: string;
+  category: 'ferreteria' | 'taller_mecanico' | 'electricidad' | 'sanitarios_plomeria' | 'corralon_materiales' | 'pintureria' | 'repuestos' | 'servicios_tecnicos' | string;
+  categoryTitle: string; // e.g. "Ferretería & Materiales", "Taller Mecánico & GNC"
+  description: string;
+  address: string;
+  location: string; // e.g. "Alejandro Roca"
+  zones: string[]; // e.g. ["Alejandro Roca", "Río Cuarto", "La Carlota"]
+  phone: string;
+  whatsapp: string; // formatted e.g. "5493584123456"
+  email?: string;
+  hours: string; // e.g. "Lun a Vie 08:00 - 12:30 / 16:00 - 20:00"
+  rating: number;
+  reviewCount: number;
+  verified: boolean;
+  discountPartner: boolean;
+  discountText?: string;
+  imageUrl: string;
+  featured?: boolean;
+  servicesOrProducts: string[];
+  mapUrl?: string;
+  createdAt?: string;
+}
+
 export interface TabVisibilityConfig {
   search: boolean;     // "Buscar Oficio"
+  shops: boolean;      // "Comercios & Negocios"
   register: boolean;   // "Soy Trabajador"
   sponsor: boolean;    // "Ferretería Bruzzone"
   ai: boolean;         // "Diagnóstico IA"
@@ -98,6 +124,8 @@ export interface AppConfig {
   tabs: TabVisibilityConfig;
   customLogoUrl?: string;
   tagline?: string;
+  ferreteroPartnerTitle?: string;
+  ferreteroPartnerDiscountText?: string;
   customTrades?: CustomTradeOption[];
   updatedAt: string;
 }

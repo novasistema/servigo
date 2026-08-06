@@ -1,4 +1,4 @@
-import { Worker, HardwareProduct } from '../types';
+import { Worker, HardwareProduct, Shop } from '../types';
 
 export const INITIAL_WORKERS: Worker[] = [
   {
@@ -372,5 +372,172 @@ export const BRUZZONE_PRODUCTS: HardwareProduct[] = [
     code: 'FB-HERR-BOS670',
     description: 'Cárter de protección con seguro contra desplazamiento y empuñadura auxiliar.',
     storeUrl: 'https://ferreteriabruzzone.com.ar/tienda',
+  }
+];
+
+export const INITIAL_SHOPS: Shop[] = [
+  {
+    id: 'shop-1',
+    name: 'Ferretería Central Bruzzone',
+    category: 'ferreteria',
+    categoryTitle: 'Ferretería & Materiales',
+    description: 'Sponsor Oficial ServiLibre. Venta de artículos de ferretería, herramientas, sanitarios, electricidad, pintura y plomería. Atendido por sus dueños con asesoramiento profesional.',
+    address: 'Av. San Martín 450, Centro',
+    location: 'Alejandro Roca',
+    zones: ['Alejandro Roca', 'Río Cuarto', 'La Carlota', 'San Isidro', 'Vicente López', 'Tigre'],
+    phone: '+54 9 358 412-3456',
+    whatsapp: '5493584123456',
+    email: 'contacto@ferreteriabruzzone.com.ar',
+    hours: 'Lun a Vie 08:00 - 12:30 / 16:00 - 20:00, Sáb 08:30 - 13:00',
+    rating: 5.0,
+    reviewCount: 94,
+    verified: true,
+    discountPartner: true,
+    discountText: '10% OFF en insumos al presentar tu perfil de cliente/prestador ServiLibre',
+    imageUrl: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=800',
+    featured: true,
+    servicesOrProducts: [
+      'Herramientas profesionales DeWalt / Bosch / Stanley',
+      'Sanitarios & Cañerías IPS Termofusión',
+      'Electricidad Schneider, Jeluz y Sica',
+      'Pinturas Alba y Sinteplast',
+      'Atención personalizada y presupuestos sin cargo'
+    ],
+    mapUrl: 'https://maps.google.com/?q=Alejandro+Roca+Cordoba'
+  },
+  {
+    id: 'shop-2',
+    name: 'Taller Mecánico & GNC "El Tuerca"',
+    category: 'taller_mecanico',
+    categoryTitle: 'Taller Mecánico & Electromecánica',
+    description: 'Especialistas en mecánica ligera, inyección electrónica, frenos, tren delantero y prueba hidráulica de GNC. Diagnóstico por escáner multimarca e inspección preventiva.',
+    address: 'Ruta 8 Km 210, Acceso Norte',
+    location: 'Río Cuarto',
+    zones: ['Río Cuarto', 'Alejandro Roca', 'La Carlota'],
+    phone: '+54 9 358 488-9900',
+    whatsapp: '5493584889900',
+    hours: 'Lun a Vie 08:00 - 18:00 (Horario Corrido)',
+    rating: 4.9,
+    reviewCount: 42,
+    verified: true,
+    discountPartner: true,
+    discountText: 'Escaneo computarizado Bonificado en cambios de aceite y filtros completos',
+    imageUrl: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&q=80&w=800',
+    featured: true,
+    servicesOrProducts: [
+      'Mecánica general e inyección electrónica',
+      'Alineación, balanceo y suspensión',
+      'Diagnóstico computarizado por escáner',
+      'Reparación de frenos y embragues',
+      'Pruebas hidráulicas y oblea GNC'
+    ],
+    mapUrl: 'https://maps.google.com/?q=Rio+Cuarto+Cordoba'
+  },
+  {
+    id: 'shop-3',
+    name: 'Bulonera & Sanitarios "El Tornillo de Oro"',
+    category: 'sanitarios_plomeria',
+    categoryTitle: 'Bulonera & Sanitarios',
+    description: 'Amplia variedad de bulones de alta resistencia, cañerías en termofusión, griferías FV, bombas presurizadoras y conexiones de gas certificadas.',
+    address: 'Calle Belgrano 128',
+    location: 'La Carlota',
+    zones: ['La Carlota', 'Alejandro Roca', 'Río Cuarto'],
+    phone: '+54 9 358 455-1122',
+    whatsapp: '5493584551122',
+    hours: 'Lun a Vie 08:00 - 12:30 / 16:00 - 20:00',
+    rating: 4.8,
+    reviewCount: 28,
+    verified: true,
+    discountPartner: false,
+    imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=800',
+    featured: false,
+    servicesOrProducts: [
+      'Tornillería y bulonería especial milimétrica',
+      'Accesorios de agua y gas en termofusión',
+      'Repuestos de griferías FV y sanitarios Ferrum',
+      'Bombas sumergibles y presurizadoras Rowa'
+    ],
+    mapUrl: 'https://maps.google.com/?q=La+Carlota+Cordoba'
+  },
+  {
+    id: 'shop-4',
+    name: 'Taller de Chapa, Pintura y Sacabollos "Rossi"',
+    category: 'taller_mecanico',
+    categoryTitle: 'Chapa, Pintura & Estética Automotor',
+    description: 'Taller de chapa y pintura de alta gama. Reparación de bollos de granizo sin dañar pintura original, banco de estirado digital y cabina de pintura presurizada.',
+    address: 'Av. Italia 1540',
+    location: 'Río Cuarto',
+    zones: ['Río Cuarto', 'Alejandro Roca', 'General Deheza'],
+    phone: '+54 9 358 512-3344',
+    whatsapp: '5493585123344',
+    hours: 'Lun a Vie 08:30 - 18:30',
+    rating: 4.9,
+    reviewCount: 36,
+    verified: true,
+    discountPartner: true,
+    discountText: '15% OFF en lustrado de carrocería y tratamiento cerámico',
+    imageUrl: 'https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&q=80&w=800',
+    featured: true,
+    servicesOrProducts: [
+      'Sacabollos de granizo sin pintar',
+      'Pintura bicapa al horno garantizada',
+      'Tratamiento cerámico y acrílico de pintura',
+      'Presupuestos para compañías de seguro'
+    ],
+    mapUrl: 'https://maps.google.com/?q=Rio+Cuarto+Cordoba'
+  },
+  {
+    id: 'shop-5',
+    name: 'Casa de Electricidad e Iluminación "Electra"',
+    category: 'electricidad',
+    categoryTitle: 'Electricidad & Iluminación LED',
+    description: 'Insumos eléctricos para obras residenciales e industriales, artefactos de iluminación moderna, tiras LED, paneles solares y fotocélulas de exterior.',
+    address: 'Av. Centenario 820',
+    location: 'San Isidro',
+    zones: ['San Isidro', 'Vicente López', 'Martínez', 'Tigre'],
+    phone: '+54 9 11 4743-9000',
+    whatsapp: '5491147439000',
+    hours: 'Lun a Sáb 08:30 - 19:30',
+    rating: 4.8,
+    reviewCount: 51,
+    verified: true,
+    discountPartner: true,
+    discountText: '10% OFF en efectivo para Electricistas Matriculados ServiLibre',
+    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&q=80&w=800',
+    featured: false,
+    servicesOrProducts: [
+      'Cables Jeluz / Prysmian homologados',
+      'Tableros y térmicas Schneider / Sica',
+      'Artefactos LED e iluminación de diseño',
+      'Asesoramiento técnico en obra'
+    ],
+    mapUrl: 'https://maps.google.com/?q=San+Isidro'
+  },
+  {
+    id: 'shop-6',
+    name: 'Corralón de Materiales "El Galpón"',
+    category: 'corralon_materiales',
+    categoryTitle: 'Corralón & Materiales de Construcción',
+    description: 'Venta y reparto de arena, piedra, cemento Holcim, cal, hierro aletado, viguetas pretensadas y ladrillos cerámicos. Entregas rápidas en obra con camión hidrogrúa.',
+    address: 'Ruta Provincial 24 S/N',
+    location: 'Alejandro Roca',
+    zones: ['Alejandro Roca', 'Río Cuarto', 'La Carlota', 'Los Cisnes'],
+    phone: '+54 9 358 490-8811',
+    whatsapp: '5493584908811',
+    hours: 'Lun a Vie 07:30 - 18:00, Sáb 07:30 - 12:30',
+    rating: 4.9,
+    reviewCount: 68,
+    verified: true,
+    discountPartner: true,
+    discountText: 'Envío sin cargo en zona urbana para compras mayores a $150.000',
+    imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=800',
+    featured: true,
+    servicesOrProducts: [
+      'Envío rápido en obra con camión hidrogrúa',
+      'Ladrillos cerámicos y bloques de hormigón',
+      'Cemento Holcim, cales y mezclas aditivadas',
+      'Hierros conformados y mallas para losas'
+    ],
+    mapUrl: 'https://maps.google.com/?q=Alejandro+Roca+Cordoba'
   }
 ];
