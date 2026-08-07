@@ -16,8 +16,11 @@ import {
   ThumbsUp,
   MessageSquare,
   Sparkles,
+  Share2,
+  Check,
 } from 'lucide-react';
 import { Worker, HardwareProduct } from '../types';
+import { shareContent } from '../utils/share';
 
 interface WorkerDetailModalProps {
   worker: Worker | null;
@@ -35,8 +38,20 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
   bruzzoneProducts,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'reviews' | 'gallery'>('info');
+  const [copied, setCopied] = useState(false);
 
   if (!worker) return null;
+
+  const handleShare = async () => {
+    const res = await shareContent({
+      title: `${worker.name} - ${worker.tradeTitle} | ServiGo`,
+      text: `Te recomiendo a ${worker.name} (${worker.tradeTitle}) en ${worker.location}. Calificación: ★ ${worker.rating.toFixed(1)}. ¡Contactalo en ServiGo!`,
+    });
+    if (res.method === 'clipboard') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
 
   const whatsappUrl = `https://wa.me/${worker.whatsapp}?text=${encodeURIComponent(
     `Hola ${worker.name}, vi tu perfil verificado en la app ServiGo (auspiciada por Ferretería Bruzzone) y quisiera consultar por tu disponibilidad para un trabajo de ${worker.tradeTitle}.`
@@ -76,12 +91,33 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="p-2 rounded-full bg-slate-800 hover:bg-orange-600 text-slate-200 hover:text-white transition-colors cursor-pointer"
+                title="Compartir publicación"
+                aria-label="Compartir publicación"
+              >
+                {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5" />}
+              </button>
+              {copied && (
+                <span className="absolute top-11 right-0 bg-white text-slate-900 text-[10px] font-black px-2 py-1 rounded-lg shadow-xl whitespace-nowrap animate-fadeIn z-20">
+                  ¡Enlace copiado!
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+              title="Cerrar modal"
+              aria-label="Cerrar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Navigation Tabs */}
@@ -369,11 +405,20 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
 
           <button
             onClick={() => onOpenReviewModal(worker)}
-            className="py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-xs flex items-center justify-center gap-1 shadow-xs transition-all active:scale-95 shrink-0"
+            className="py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-xs flex items-center justify-center gap-1 shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
             title="Calificar experiencia y escribir reseña"
           >
             <Star className="w-4 h-4 fill-amber-400 text-amber-400 shrink-0" />
             <span className="hidden sm:inline">Opinión</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1 shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+            title="Compartir esta publicación"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <Share2 className="w-4 h-4 text-slate-700 shrink-0" />}
+            <span className="hidden sm:inline">{copied ? '¡Copiado!' : 'Compartir'}</span>
           </button>
         </div>
       </div>

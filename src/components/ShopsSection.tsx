@@ -15,12 +15,15 @@ import {
   Sparkles,
   ExternalLink,
   ChevronRight,
-  Filter
+  Filter,
+  Share2,
+  Check
 } from 'lucide-react';
 import { Shop } from '../types';
 import { extractUniqueZones, normalizeZoneKey } from '../lib/zoneUtils';
 import { ShopDetailModal } from './ShopDetailModal';
 import { ShopRegisterModal } from './ShopRegisterModal';
+import { shareContent } from '../utils/share';
 
 interface ShopsSectionProps {
   shops: Shop[];
@@ -39,9 +42,21 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [onlyDiscount, setOnlyDiscount] = useState<boolean>(false);
   const [onlyVerified, setOnlyVerified] = useState<boolean>(false);
-
   const [selectedShopForModal, setSelectedShopForModal] = useState<Shop | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
+  const [copiedShopId, setCopiedShopId] = useState<string | null>(null);
+
+  const handleShareShop = async (e: React.MouseEvent, shop: Shop) => {
+    e.stopPropagation();
+    const res = await shareContent({
+      title: `${shop.name} - ${shop.categoryTitle || shop.category} | ServiGo`,
+      text: `Conoce ${shop.name} en ServiGo. Dirección: ${shop.address}, ${shop.location}. ¡Contactalos en ServiGo!`,
+    });
+    if (res.method === 'clipboard') {
+      setCopiedShopId(shop.id);
+      setTimeout(() => setCopiedShopId(null), 2200);
+    }
+  };
 
   // Extract all available unique zones from shops
   const allZones = useMemo(() => {
@@ -308,18 +323,37 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
 
-                  {/* Top Badges */}
+                  {/* Top Badges & Share */}
                   <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-orange-500 text-white px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-xs">
                       {shop.categoryTitle || shop.category}
                     </span>
 
-                    {shop.verified && (
-                      <span className="bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1 shadow-xs">
-                        <ShieldCheck className="w-3 h-3" />
-                        Verificado
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {shop.verified && (
+                        <span className="bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1 shadow-xs">
+                          <ShieldCheck className="w-3 h-3" />
+                          Verificado
+                        </span>
+                      )}
+
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => handleShareShop(e, shop)}
+                          className="p-1.5 rounded-full bg-slate-900/80 hover:bg-orange-600 text-white transition-all shadow-md cursor-pointer flex items-center justify-center"
+                          title="Compartir comercio"
+                          aria-label="Compartir comercio"
+                        >
+                          {copiedShopId === shop.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+                        </button>
+                        {copiedShopId === shop.id && (
+                          <span className="absolute top-8 right-0 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-lg whitespace-nowrap animate-fadeIn z-20">
+                            ¡Enlace copiado!
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Discount Tag */}

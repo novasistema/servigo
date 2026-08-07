@@ -1,6 +1,7 @@
-import React from 'react';
-import { Star, MapPin, MessageCircle, ShieldCheck, Calendar, ChevronRight, Award, MessageSquare } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, MapPin, MessageCircle, ShieldCheck, Calendar, ChevronRight, Award, MessageSquare, Share2, Check } from 'lucide-react';
 import { Worker } from '../types';
+import { shareContent } from '../utils/share';
 
 interface WorkerCardProps {
   worker: Worker;
@@ -15,6 +16,20 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
   onOpenBooking,
   onOpenReviewModal,
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await shareContent({
+      title: `${worker.name} - ${worker.tradeTitle} | ServiGo`,
+      text: `Te recomiendo a ${worker.name} (${worker.tradeTitle}) en ${worker.location}. Calificación: ★ ${worker.rating.toFixed(1)}. ¡Contactalo en ServiGo!`,
+    });
+    if (res.method === 'clipboard') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
+
   const whatsappUrl = `https://wa.me/${worker.whatsapp}?text=${encodeURIComponent(
     `Hola ${worker.name}, te contacto desde la app ServiGo (auspiciada por Ferretería Bruzzone) para consultar por tus servicios de ${worker.tradeTitle}.`
   )}`;
@@ -23,7 +38,7 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
     <div className="bg-white border border-slate-200 hover:border-orange-300 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden">
       {/* Top Section */}
       <div>
-        <div className="flex items-start justify-between gap-2.5 mb-2.5">
+        <div className="flex items-start justify-between gap-2 mb-2.5">
           {/* Avatar & Online status */}
           <div className="relative shrink-0">
             <img
@@ -42,7 +57,7 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
           </div>
 
           {/* Title & Ratings */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-1">
             <div className="flex items-center gap-1 flex-wrap">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-orange-600 transition-colors truncate">
                 {worker.name}
@@ -68,27 +83,45 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
                 <span className="truncate">{worker.matricula}</span>
               </p>
             )}
-
-            {/* Stars & Review Button */}
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <div className="flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full font-black text-xs">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                <span>{worker.rating.toFixed(1)}</span>
-                <span className="text-slate-500 font-normal">({worker.reviewCount})</span>
-              </div>
-
-              {onOpenReviewModal && (
-                <button
-                  onClick={() => onOpenReviewModal(worker)}
-                  className="text-[10px] font-extrabold bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-orange-700 px-2 py-0.5 rounded-full flex items-center gap-1 transition-all border border-slate-200 active:scale-95"
-                  title="Calificar y dejar reseña de mi experiencia"
-                >
-                  <MessageSquare className="w-3 h-3 text-orange-600" />
-                  <span>★ Calificar</span>
-                </button>
-              )}
-            </div>
           </div>
+
+          {/* Share Button */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer border border-slate-200/80 active:scale-95"
+              title="Compartir publicación"
+              aria-label="Compartir publicación"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
+            </button>
+            {copied && (
+              <span className="absolute top-10 right-0 bg-slate-900 text-white text-[10px] font-extrabold px-2 py-1 rounded-lg shadow-lg whitespace-nowrap animate-fadeIn z-20">
+                ¡Enlace copiado!
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Stars & Review Button */}
+        <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full font-black text-xs">
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+            <span>{worker.rating.toFixed(1)}</span>
+            <span className="text-slate-500 font-normal">({worker.reviewCount})</span>
+          </div>
+
+          {onOpenReviewModal && (
+            <button
+              onClick={() => onOpenReviewModal(worker)}
+              className="text-[10px] font-extrabold bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-orange-700 px-2 py-0.5 rounded-full flex items-center gap-1 transition-all border border-slate-200 active:scale-95"
+              title="Calificar y dejar reseña de mi experiencia"
+            >
+              <MessageSquare className="w-3 h-3 text-orange-600" />
+              <span>★ Calificar</span>
+            </button>
+          )}
         </div>
 
         {/* Location & Coverage */}

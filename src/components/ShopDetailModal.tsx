@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Store,
@@ -11,9 +11,12 @@ import {
   ExternalLink,
   Tag,
   CheckCircle2,
-  Building2
+  Building2,
+  Share2,
+  Check
 } from 'lucide-react';
 import { Shop } from '../types';
+import { shareContent } from '../utils/share';
 
 interface ShopDetailModalProps {
   shop: Shop | null;
@@ -26,7 +29,20 @@ export const ShopDetailModal: React.FC<ShopDetailModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   if (!isOpen || !shop) return null;
+
+  const handleShare = async () => {
+    const res = await shareContent({
+      title: `${shop.name} - ${shop.categoryTitle || shop.category} | ServiGo`,
+      text: `Conoce ${shop.name} en ServiGo. Dirección: ${shop.address}, ${shop.location}. ¡Contactalos en ServiGo!`,
+    });
+    if (res.method === 'clipboard') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
 
   const whatsappMessage = encodeURIComponent(
     `Hola ${shop.name}, los encontré en la app ServiGo. Quisiera consultar sobre sus productos y servicios.`
@@ -44,13 +60,34 @@ export const ShopDetailModal: React.FC<ShopDetailModalProps> = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
 
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 p-2 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white transition-all shadow-md z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Close & Share buttons */}
+          <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="p-2 rounded-full bg-slate-900/80 hover:bg-orange-600 text-white transition-all shadow-md cursor-pointer"
+                title="Compartir comercio"
+                aria-label="Compartir comercio"
+              >
+                {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5" />}
+              </button>
+              {copied && (
+                <span className="absolute top-11 right-0 bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-xl whitespace-nowrap animate-fadeIn z-20">
+                  ¡Enlace copiado!
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white transition-all shadow-md cursor-pointer"
+              title="Cerrar modal"
+              aria-label="Cerrar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -170,24 +207,33 @@ export const ShopDetailModal: React.FC<ShopDetailModalProps> = ({
 
           {/* Action Buttons */}
           <div className="pt-4 border-t border-slate-200 space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <a
                 href={`https://wa.me/${shop.whatsapp}?text=${whatsappMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm transition-all shadow-md shadow-emerald-600/20 active:scale-98"
+                className="inline-flex items-center justify-center gap-2 px-3 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm transition-all shadow-md shadow-emerald-600/20 active:scale-98"
               >
-                <MessageCircle className="w-5 h-5" />
-                <span>Contactar por WhatsApp</span>
+                <MessageCircle className="w-4 h-4 shrink-0" />
+                <span>WhatsApp</span>
               </a>
 
               <a
                 href={`tel:${shop.phone}`}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm transition-all shadow-md active:scale-98"
+                className="inline-flex items-center justify-center gap-2 px-3 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-98"
               >
-                <Phone className="w-4 h-4 text-orange-400" />
-                <span>Llamar al Comercio</span>
+                <Phone className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Llamar</span>
               </a>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex items-center justify-center gap-2 px-3 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-extrabold text-xs sm:text-sm transition-all shadow-xs active:scale-98 cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <Share2 className="w-4 h-4 text-slate-700 shrink-0" />}
+                <span>{copied ? '¡Copiado!' : 'Compartir'}</span>
+              </button>
             </div>
 
             {shop.mapUrl && (
