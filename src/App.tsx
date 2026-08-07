@@ -69,7 +69,10 @@ export default function App() {
     const saved = localStorage.getItem('servigo_shops_v1');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       } catch (e) {
         console.error(e);
       }

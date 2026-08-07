@@ -20,6 +20,7 @@ import {
   Check
 } from 'lucide-react';
 import { Shop } from '../types';
+import { INITIAL_SHOPS } from '../data/mockData';
 import { extractUniqueZones, normalizeZoneKey } from '../lib/zoneUtils';
 import { ShopDetailModal } from './ShopDetailModal';
 import { ShopRegisterModal } from './ShopRegisterModal';
@@ -38,6 +39,7 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   onZoneSelect,
   onSaveShop,
 }) => {
+  const [localZone, setLocalZone] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [onlyDiscount, setOnlyDiscount] = useState<boolean>(false);
@@ -45,6 +47,13 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   const [selectedShopForModal, setSelectedShopForModal] = useState<Shop | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [copiedShopId, setCopiedShopId] = useState<string | null>(null);
+
+  const activeShops = useMemo(() => {
+    if (shops && Array.isArray(shops) && shops.length > 0) {
+      return shops;
+    }
+    return INITIAL_SHOPS;
+  }, [shops]);
 
   const handleShareShop = async (e: React.MouseEvent, shop: Shop) => {
     e.stopPropagation();
@@ -60,11 +69,11 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
 
   // Extract all available unique zones from shops
   const allZones = useMemo(() => {
-    const rawZones = shops.flatMap((s) => [s.location, ...s.zones]);
+    const rawZones = activeShops.flatMap((s) => [s.location || '', ...(s.zones || [])]);
     // Ensure standard regional zones are included
     rawZones.push('Alejandro Roca', 'Río Cuarto', 'La Carlota');
     return extractUniqueZones(rawZones);
-  }, [shops]);
+  }, [activeShops]);
 
   // Categories config
   const categories = [
@@ -81,18 +90,24 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
 
   // Filter & sort shops
   const filteredShops = useMemo(() => {
-    const list = shops.filter((shop) => {
+    const list = activeShops.filter((shop) => {
       // Zone filter
-      if (selectedZone && selectedZone !== 'todas') {
-        const zoneKey = normalizeZoneKey(selectedZone);
-        const locationMatches = normalizeZoneKey(shop.location).includes(zoneKey);
-        const zonesMatch = shop.zones.some((z) => normalizeZoneKey(z).includes(zoneKey));
+      const isAllZones = !localZone || localZone === 'all' || localZone === 'todas';
+      if (!isAllZones) {
+        const zoneKey = normalizeZoneKey(localZone);
+        const locationMatches = normalizeZoneKey(shop.location || '').includes(zoneKey);
+        const zonesMatch = (shop.zones || []).some((z) => normalizeZoneKey(z).includes(zoneKey));
         if (!locationMatches && !zonesMatch) return false;
       }
 
       // Category filter
-      if (selectedCategory !== 'todos') {
-        if (shop.category !== selectedCategory) return false;
+      if (selectedCategory && selectedCategory !== 'todos') {
+        const normSel = normalizeZoneKey(selectedCategory);
+        const normCat = normalizeZoneKey(shop.category || '');
+        const normTitle = normalizeZoneKey(shop.categoryTitle || '');
+        const matchesCat = normCat.includes(normSel) || normSel.includes(normCat);
+        const matchesTitle = normTitle.includes(normSel);
+        if (!matchesCat && !matchesTitle) return false;
       }
 
       // Discount filter
@@ -104,11 +119,11 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
       // Search query
       if (searchQuery.trim()) {
         const q = normalizeZoneKey(searchQuery);
-        const nameMatch = normalizeZoneKey(shop.name).includes(q);
-        const descMatch = normalizeZoneKey(shop.description).includes(q);
-        const catMatch = normalizeZoneKey(shop.categoryTitle || shop.category).includes(q);
-        const addressMatch = normalizeZoneKey(shop.address).includes(q);
-        const prodMatch = shop.servicesOrProducts.some((p) => normalizeZoneKey(p).includes(q));
+        const nameMatch = normalizeZoneKey(shop.name || '').includes(q);
+        const descMatch = normalizeZoneKey(shop.description || '').includes(q);
+        const catMatch = normalizeZoneKey(shop.categoryTitle || shop.category || '').includes(q);
+        const addressMatch = normalizeZoneKey(shop.address || '').includes(q);
+        const prodMatch = (shop.servicesOrProducts || []).some((p) => normalizeZoneKey(p).includes(q));
 
         if (!nameMatch && !descMatch && !catMatch && !addressMatch && !prodMatch) {
           return false;
@@ -126,7 +141,9 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return dateB - dateA;
     });
-  }, [shops, selectedZone, selectedCategory, onlyDiscount, onlyVerified, searchQuery]);
+  }, [activeShops, localZone, selectedCategory, onlyDiscount, onlyVerified, searchQuery]);
+
+  const shopsToRender = filteredShops.length > 0 ? filteredShops : activeShops;
 
   const handleRegisterNewShop = async (newShop: Shop) => {
     // Reset filters so the new shop is immediately visible
@@ -134,7 +151,8 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
     setOnlyDiscount(false);
     setOnlyVerified(false);
     setSelectedCategory('todos');
-    if (onZoneSelect) onZoneSelect('todas');
+    setLocalZone('all');
+    if (onZoneSelect) onZoneSelect('all');
 
     if (onSaveShop) {
       await onSaveShop(newShop);
@@ -202,11 +220,14 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
               <span>Zona:</span>
             </div>
             <select
-              value={selectedZone}
-              onChange={(e) => onZoneSelect(e.target.value)}
+              value={localZone}
+              onChange={(e) => {
+                setLocalZone(e.target.value);
+                if (onZoneSelect) onZoneSelect(e.target.value);
+              }}
               className="px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all cursor-pointer flex-1"
             >
-              <option value="todas">📍 Todas las Zonas</option>
+              <option value="all">📍 Todas las Zonas</option>
               {allZones.map((z) => (
                 <option key={z} value={z}>
                   📍 {z}
@@ -269,42 +290,38 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
             </span>
           </label>
 
-          <span className="ml-auto text-xs text-slate-400 font-medium">
-            Mostrando <strong>{filteredShops.length}</strong> comercio(s)
-          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {(selectedCategory !== 'todos' || searchQuery || localZone !== 'all' || onlyDiscount || onlyVerified) && (
+              <button
+                onClick={() => {
+                  setSelectedCategory('todos');
+                  setSearchQuery('');
+                  setOnlyDiscount(false);
+                  setOnlyVerified(false);
+                  setLocalZone('all');
+                  if (onZoneSelect) onZoneSelect('all');
+                }}
+                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 underline cursor-pointer"
+              >
+                Ver todos
+              </button>
+            )}
+            <span className="text-xs text-slate-400 font-medium">
+              Mostrando <strong>{shopsToRender.length}</strong> comercio(s)
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Grid of Shops */}
-      {filteredShops.length === 0 ? (
-        <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-            <Store className="w-8 h-8" />
-          </div>
-          <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-black text-slate-800">
-              No se encontraron comercios con los filtros aplicados
-            </h3>
-            <p className="text-xs text-slate-500">
-              Prueba cambiar la zona seleccionada, limpiar la búsqueda o registrar un nuevo comercio.
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setSelectedCategory('todos');
-              setSearchQuery('');
-              setOnlyDiscount(false);
-              setOnlyVerified(false);
-              onZoneSelect('todas');
-            }}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all"
-          >
-            Restablecer Filtros
-          </button>
+      {filteredShops.length === 0 && (
+        <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-2xl px-4 py-3 text-center shadow-xs">
+          No se encontraron comercios con los filtros exactos. Mostrando todos los comercios disponibles:
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredShops.map((shop) => {
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {shopsToRender.map((shop) => {
             const whatsappMsg = encodeURIComponent(
               `Hola ${shop.name}, los encontré en ServiGo. Quisiera consultar sobre sus productos.`
             );
@@ -456,7 +473,6 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
             );
           })}
         </div>
-      )}
 
       {/* Detail Modal */}
       <ShopDetailModal

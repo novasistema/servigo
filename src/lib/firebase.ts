@@ -324,7 +324,7 @@ export function subscribeShops(onData: (shops: Shop[]) => void): () => void {
         return dateB - dateA;
       });
       // If collection is empty, seed initial shops
-      if (snapshot.empty) {
+      if (snapshot.empty || shopsList.length === 0) {
         INITIAL_SHOPS.forEach((shop) => saveShopToFirestore(shop).catch(console.error));
         onData(INITIAL_SHOPS);
       } else {
