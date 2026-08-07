@@ -55,15 +55,18 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   const categories = [
     { id: 'todos', label: 'Todos los Rubros', icon: Store },
     { id: 'ferreteria', label: 'Ferreterías', icon: Wrench },
-    { id: 'taller_mecanico', label: 'Talleres Mecánicos & GNC', icon: Building2 },
+    { id: 'taller_mecanico', label: 'Talleres Mecánicos', icon: Building2 },
     { id: 'sanitarios_plomeria', label: 'Sanitarios & Plomería', icon: Wrench },
     { id: 'electricidad', label: 'Electricidad & LED', icon: Sparkles },
     { id: 'corralon_materiales', label: 'Corralones & Materiales', icon: Building2 },
+    { id: 'pintureria', label: 'Pinturerías', icon: Tag },
+    { id: 'repuestos', label: 'Repuestos & Accesorios', icon: Tag },
+    { id: 'servicios_tecnicos', label: 'Servicios Técnicos', icon: Wrench },
   ];
 
-  // Filter shops
+  // Filter & sort shops
   const filteredShops = useMemo(() => {
-    return shops.filter((shop) => {
+    const list = shops.filter((shop) => {
       // Zone filter
       if (selectedZone && selectedZone !== 'todas') {
         const zoneKey = normalizeZoneKey(selectedZone);
@@ -99,9 +102,25 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
 
       return true;
     });
+
+    // Sort: featured first, then newest created date first
+    return list.sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return 1;
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [shops, selectedZone, selectedCategory, onlyDiscount, onlyVerified, searchQuery]);
 
   const handleRegisterNewShop = async (newShop: Shop) => {
+    // Reset filters so the new shop is immediately visible
+    setSearchQuery('');
+    setOnlyDiscount(false);
+    setOnlyVerified(false);
+    setSelectedCategory('todos');
+    if (onZoneSelect) onZoneSelect('todas');
+
     if (onSaveShop) {
       await onSaveShop(newShop);
     }

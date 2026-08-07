@@ -316,6 +316,13 @@ export function subscribeShops(onData: (shops: Shop[]) => void): () => void {
     shopsRef,
     (snapshot) => {
       const shopsList = snapshot.docs.map((docSnap) => docSnap.data() as Shop);
+      shopsList.sort((a, b) => {
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
       // If collection is empty, seed initial shops
       if (snapshot.empty) {
         INITIAL_SHOPS.forEach((shop) => saveShopToFirestore(shop).catch(console.error));

@@ -65,7 +65,17 @@ export default function App() {
   });
 
   const [banners, setBanners] = useState<PromotedBanner[]>(INITIAL_BANNERS);
-  const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
+  const [shops, setShops] = useState<Shop[]>(() => {
+    const saved = localStorage.getItem('servigo_shops_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_SHOPS;
+  });
   const [tabConfig, setTabConfig] = useState<TabVisibilityConfig>(DEFAULT_TAB_CONFIG);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
@@ -90,6 +100,7 @@ export default function App() {
 
     const unsubscribeShops = subscribeShops((firestoreShops) => {
       setShops(firestoreShops);
+      localStorage.setItem('servigo_shops_v1', JSON.stringify(firestoreShops));
       setIsCloudSynced(true);
     });
 
@@ -123,6 +134,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('servigo_bookings_v1', JSON.stringify(bookings));
   }, [bookings]);
+
+  useEffect(() => {
+    localStorage.setItem('servigo_shops_v1', JSON.stringify(shops));
+  }, [shops]);
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<
