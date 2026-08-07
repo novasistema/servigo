@@ -87,47 +87,56 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.address) return;
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim()) {
+      alert('Por favor completa los campos obligatorios: Nombre del comercio, Dirección y Teléfono.');
+      return;
+    }
 
     setIsSubmitting(true);
 
-    const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '') || formData.phone.replace(/\D/g, '');
+    try {
+      const cleanWhatsapp = (formData.whatsapp || formData.phone).replace(/\D/g, '');
 
-    const servicesList = formData.servicesInput
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      const servicesList = formData.servicesInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
-    const newShop: Shop = {
-      id: `shop-${Date.now()}`,
-      name: formData.name.trim(),
-      category: formData.category,
-      categoryTitle: formData.categoryTitle,
-      description: formData.description.trim() || 'Comercio local verificado en la red ServiGo.',
-      address: formData.address.trim(),
-      location: formData.location,
-      zones: formData.zones.length > 0 ? formData.zones : [formData.location],
-      phone: formData.phone.trim(),
-      whatsapp: cleanWhatsapp.startsWith('549') ? cleanWhatsapp : `549${cleanWhatsapp}`,
-      email: formData.email.trim(),
-      hours: formData.hours.trim() || 'Lun a Vie 08:00 - 18:00',
-      rating: 5.0,
-      reviewCount: 1,
-      verified: true,
-      discountPartner: formData.discountPartner,
-      discountText: formData.discountPartner ? formData.discountText : undefined,
-      imageUrl: formData.imageUrl.trim() || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=800',
-      featured: false,
-      servicesOrProducts: servicesList.length > 0 ? servicesList : ['Atención al cliente', 'Insumos y Repuestos'],
-      mapUrl: `https://maps.google.com/?q=${encodeURIComponent(formData.address + ' ' + formData.location)}`,
-      createdAt: new Date().toISOString(),
-    };
+      const newShop: Shop = {
+        id: `shop-${Date.now()}`,
+        name: formData.name.trim(),
+        category: formData.category,
+        categoryTitle: formData.categoryTitle,
+        description: formData.description.trim() || 'Comercio local verificado en la red ServiGo.',
+        address: formData.address.trim(),
+        location: formData.location,
+        zones: formData.zones.length > 0 ? formData.zones : [formData.location],
+        phone: formData.phone.trim(),
+        whatsapp: cleanWhatsapp.startsWith('549') ? cleanWhatsapp : `549${cleanWhatsapp}`,
+        email: formData.email.trim(),
+        hours: formData.hours.trim() || 'Lun a Vie 08:00 - 18:00',
+        rating: 5.0,
+        reviewCount: 1,
+        verified: true,
+        discountPartner: formData.discountPartner,
+        discountText: formData.discountPartner ? formData.discountText : undefined,
+        imageUrl: formData.imageUrl.trim() || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=800',
+        featured: false,
+        servicesOrProducts: servicesList.length > 0 ? servicesList : ['Atención al cliente', 'Insumos y Repuestos'],
+        mapUrl: `https://maps.google.com/?q=${encodeURIComponent(formData.address + ' ' + formData.location)}`,
+        createdAt: new Date().toISOString(),
+      };
 
-    onSubmitShop(newShop);
-    setIsSubmitting(false);
-    onClose();
+      await onSubmitShop(newShop);
+      onClose();
+    } catch (err) {
+      console.error('Error al registrar comercio:', err);
+      alert('Ocurrió un error al intentar registrar el comercio. Por favor reintenta.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -247,12 +256,11 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-extrabold uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
                 <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
-                Número de WhatsApp *
+                Número de WhatsApp (Opcional)
               </label>
               <input
                 type="text"
-                required
-                placeholder="Ej: 5493584123456"
+                placeholder="Ej: 5493584123456 (Usa Teléfono si queda vacío)"
                 value={formData.whatsapp}
                 onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-xs sm:text-sm font-semibold"
@@ -263,11 +271,10 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-extrabold uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-orange-500" />
-                Horarios de Atención *
+                Horarios de Atención
               </label>
               <input
                 type="text"
-                required
                 placeholder="Ej: Lun a Vie 08:00 - 12:30 / 16:00 - 20:00, Sáb 08:30 - 13:00"
                 value={formData.hours}
                 onChange={(e) => setFormData({ ...formData, hours: e.target.value })}

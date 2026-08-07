@@ -112,6 +112,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [isDeletingWorker, setIsDeletingWorker] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [isSavingWorker, setIsSavingWorker] = useState(false);
+  const [editingShop, setEditingShop] = useState<Shop | null>(null);
+  const [isSavingShop, setIsSavingShop] = useState(false);
 
   // Reset Confirmation States
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
@@ -1303,9 +1305,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         Gestión de Comercios, Ferreterías y Talleres ({shops.length})
                       </h3>
                       <p className="text-xs text-slate-400">
-                        Administra negocios adheridos, aprueba/verifica publicaciones y activa banderas de descuento.
+                        Administra negocios adheridos, edita sus datos, aprueba/verifica publicaciones y activa banderas de descuento.
                       </p>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingShop({
+                          id: `shop-${Date.now()}`,
+                          name: '',
+                          category: 'ferreteria',
+                          categoryTitle: 'Ferretería & Insumos',
+                          description: 'Comercio o taller registrado en la red ServiGo.',
+                          address: '',
+                          location: 'Río Cuarto',
+                          zones: ['Río Cuarto'],
+                          phone: '',
+                          whatsapp: '',
+                          email: '',
+                          hours: 'Lun a Vie 08:00 - 18:00',
+                          rating: 5.0,
+                          reviewCount: 1,
+                          verified: true,
+                          discountPartner: false,
+                          discountText: '10% OFF para usuarios ServiGo',
+                          imageUrl: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=800',
+                          featured: false,
+                          servicesOrProducts: ['Herramientas', 'Materiales', 'Asesoramiento'],
+                          createdAt: new Date().toISOString(),
+                        })
+                      }
+                      className="px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95 shrink-0 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Agregar Comercio</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1357,8 +1392,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
 
                         {/* Quick action toggles for Admin */}
-                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
+                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setEditingShop(s)}
+                              className="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-300 hover:bg-orange-600 hover:text-white border border-orange-500/30 transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                              title="Editar datos del comercio"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={async () => {
@@ -1371,7 +1416,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   );
                                 }
                               }}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
                                 s.verified
                                   ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
                                   : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -1392,7 +1437,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   showToast(`Insignia de Descuento actualizada para ${s.name}`);
                                 }
                               }}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
                                 s.discountPartner
                                   ? 'bg-amber-500/30 text-amber-300 border border-amber-500/40'
                                   : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -1410,7 +1455,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 showToast(`Comercio "${s.name}" eliminado.`);
                               }
                             }}
-                            className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all"
+                            className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all cursor-pointer"
                             title="Eliminar comercio"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1943,6 +1988,305 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               >
                 {isSavingWorker ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 <span>Guardar Cambios del Trabajador</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SHOP MODAL */}
+      {editingShop && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 space-y-5 text-white shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black text-orange-400 flex items-center gap-2">
+                <Store className="w-5 h-5 text-orange-400" />
+                {shops.some((s) => s.id === editingShop.id)
+                  ? `Editar Comercio: ${editingShop.name || 'Sin Nombre'}`
+                  : 'Nuevo Comercio en la Red'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingShop(null)}
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Name */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Nombre del Comercio / Negocio *</label>
+                <input
+                  type="text"
+                  value={editingShop.name}
+                  onChange={(e) => setEditingShop({ ...editingShop, name: e.target.value })}
+                  placeholder="Ej: Ferretería Bruzzone Central"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Rubro / Categoría */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Rubro / Categoría *</label>
+                <input
+                  type="text"
+                  value={editingShop.categoryTitle || editingShop.category}
+                  onChange={(e) =>
+                    setEditingShop({
+                      ...editingShop,
+                      categoryTitle: e.target.value,
+                      category: e.target.value.toLowerCase().replace(/\s+/g, '-'),
+                    })
+                  }
+                  placeholder="Ej: Ferretería & Materiales"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Dirección */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Dirección Física *</label>
+                <input
+                  type="text"
+                  value={editingShop.address}
+                  onChange={(e) => setEditingShop({ ...editingShop, address: e.target.value })}
+                  placeholder="Ej: Av. Marconi 450"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Localidad / Ciudad *</label>
+                <input
+                  type="text"
+                  value={editingShop.location}
+                  onChange={(e) => setEditingShop({ ...editingShop, location: e.target.value })}
+                  placeholder="Ej: Río Cuarto"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Zones */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Zonas de Cobertura (Separadas por coma)</label>
+                <input
+                  type="text"
+                  value={(editingShop.zones || []).join(', ')}
+                  onChange={(e) =>
+                    setEditingShop({
+                      ...editingShop,
+                      zones: e.target.value
+                        .split(',')
+                        .map((z) => z.trim())
+                        .filter((z) => z.length > 0),
+                    })
+                  }
+                  placeholder="Ej: Río Cuarto, Las Higueras, Holmberg"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Teléfono Fijo / Móvil</label>
+                <input
+                  type="text"
+                  value={editingShop.phone}
+                  onChange={(e) => setEditingShop({ ...editingShop, phone: e.target.value })}
+                  placeholder="Ej: 0358 4620000"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* WhatsApp */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">WhatsApp (con código de país)</label>
+                <input
+                  type="text"
+                  value={editingShop.whatsapp}
+                  onChange={(e) => setEditingShop({ ...editingShop, whatsapp: e.target.value })}
+                  placeholder="Ej: 5493584123456"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Email de Contacto (Opcional)</label>
+                <input
+                  type="email"
+                  value={editingShop.email || ''}
+                  onChange={(e) => setEditingShop({ ...editingShop, email: e.target.value })}
+                  placeholder="Ej: ventas@comercio.com"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Hours */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Horarios de Atención</label>
+                <input
+                  type="text"
+                  value={editingShop.hours || ''}
+                  onChange={(e) => setEditingShop({ ...editingShop, hours: e.target.value })}
+                  placeholder="Ej: Lun a Vie 08:00 - 18:30 | Sáb 08:30 - 13:00"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Image URL */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">URL Foto de Portada / Local</label>
+                <input
+                  type="text"
+                  value={editingShop.imageUrl || ''}
+                  onChange={(e) => setEditingShop({ ...editingShop, imageUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Services or Products */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Productos / Servicios Destacados (Separados por coma)</label>
+                <input
+                  type="text"
+                  value={(editingShop.servicesOrProducts || []).join(', ')}
+                  onChange={(e) =>
+                    setEditingShop({
+                      ...editingShop,
+                      servicesOrProducts: e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter((s) => s.length > 0),
+                    })
+                  }
+                  placeholder="Ej: Herramientas, Materiales Durlock, Griferías, Insumos Electricidad"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Descripción del Comercio</label>
+                <textarea
+                  rows={2}
+                  value={editingShop.description || ''}
+                  onChange={(e) => setEditingShop({ ...editingShop, description: e.target.value })}
+                  placeholder="Resumen del comercio, promociones especiales, historia, etc."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
+                />
+              </div>
+
+              {/* Badges / Checkboxes */}
+              <div className="sm:col-span-2 space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <h4 className="font-bold text-orange-400 uppercase tracking-wider text-[11px]">
+                  Banderas, Verificaciones y Beneficios Exclusivos
+                </h4>
+
+                {/* Verified */}
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-blue-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-blue-400" />
+                      Comercio Verificado por ServiGo
+                    </span>
+                    <p className="text-[11px] text-slate-400">Muestra la insignia azul de negocio verificado.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingShop.verified || false}
+                    onChange={(e) => setEditingShop({ ...editingShop, verified: e.target.checked })}
+                    className="w-5 h-5 accent-blue-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                {/* Discount Partner */}
+                <div className="p-2 rounded-xl hover:bg-slate-900 transition-colors space-y-2">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div className="space-y-0.5">
+                      <span className="font-black text-amber-400 flex items-center gap-1.5">
+                        🏷️ Beneficio / Descuento Exclusivo
+                      </span>
+                      <p className="text-[11px] text-slate-400">Ofrece promociones o descuentos especiales para clientes ServiGo.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editingShop.discountPartner || false}
+                      onChange={(e) => setEditingShop({ ...editingShop, discountPartner: e.target.checked })}
+                      className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
+                    />
+                  </label>
+
+                  {editingShop.discountPartner && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 mb-1">Texto del Descuento / Promoción</label>
+                      <input
+                        type="text"
+                        value={editingShop.discountText || ''}
+                        onChange={(e) => setEditingShop({ ...editingShop, discountText: e.target.value })}
+                        placeholder="Ej: 10% OFF en compras con ServiGo"
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-amber-500 text-xs font-medium"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Featured */}
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-purple-400 flex items-center gap-1.5">
+                      ⭐ Comercio Destacado en Portada
+                    </span>
+                    <p className="text-[11px] text-slate-400">Aparece prioritariamente en la sección de comercios.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingShop.featured || false}
+                    onChange={(e) => setEditingShop({ ...editingShop, featured: e.target.checked })}
+                    className="w-5 h-5 accent-purple-500 rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingShop(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingShop}
+                onClick={async () => {
+                  if (!editingShop.name.trim()) {
+                    showToast('El nombre del comercio no puede estar vacío');
+                    return;
+                  }
+                  try {
+                    setIsSavingShop(true);
+                    if (onSaveShop) {
+                      await onSaveShop(editingShop);
+                    }
+                    setEditingShop(null);
+                    showToast(`¡Comercio "${editingShop.name}" guardado exitosamente!`);
+                  } catch (err) {
+                    console.error(err);
+                    showToast('❌ Error al guardar los datos del comercio.');
+                  } finally {
+                    setIsSavingShop(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+              >
+                {isSavingShop ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Guardar Cambios del Comercio</span>
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, MapPin, User, Phone, MessageCircle, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Clock, MapPin, User, Phone, MessageCircle, AlertTriangle, CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
 import { Worker, BookingRequest } from '../types';
 
 interface BookingModalProps {
@@ -16,6 +16,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
   const [timeSlot, setTimeSlot] = useState('09:00 - 12:00 (Mañana)');
   const [urgency, setUrgency] = useState<'normal' | 'alta' | 'urgencia_24h'>('normal');
   const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!worker) return null;
 
@@ -64,34 +72,43 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white border border-slate-200 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 text-slate-800 relative">
+    <div
+      className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-slate-800 relative my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-start justify-between border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3 sticky -top-5 sm:-top-6 bg-white z-10 pt-1 -mx-5 sm:-mx-6 px-5 sm:px-6">
+          <div className="flex items-center gap-3 pr-2 min-w-0">
             <img
               src={worker.avatar}
               alt={worker.name}
-              className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-slate-200 shrink-0"
             />
-            <div>
-              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider block">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider block truncate">
                 Solicitar Turno / Presupuesto
               </span>
-              <h3 className="text-base font-black text-slate-900">{worker.name}</h3>
-              <p className="text-xs font-bold text-slate-500">{worker.tradeTitle}</p>
+              <h3 className="text-base font-black text-slate-900 truncate">{worker.name}</h3>
+              <p className="text-xs font-bold text-slate-500 truncate">{worker.tradeTitle}</p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0 cursor-pointer shadow-xs"
+            title="Cerrar y volver a la página principal"
+            aria-label="Cerrar ventana"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {/* Client Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -179,7 +196,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
               <button
                 type="button"
                 onClick={() => setUrgency('normal')}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   urgency === 'normal'
                     ? 'bg-orange-600 text-white border-orange-600'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -190,7 +207,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
               <button
                 type="button"
                 onClick={() => setUrgency('alta')}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   urgency === 'alta'
                     ? 'bg-amber-600 text-white border-amber-600'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -201,7 +218,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
               <button
                 type="button"
                 onClick={() => setUrgency('urgencia_24h')}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   urgency === 'urgencia_24h'
                     ? 'bg-rose-600 text-white border-rose-600'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -235,16 +252,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
             </span>
           </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span>Enviar Solicitud por WhatsApp</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm border border-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volver</span>
+            </button>
+
+            <button
+              type="submit"
+              className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span>Enviar Solicitud por WhatsApp</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 };
+

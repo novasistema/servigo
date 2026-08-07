@@ -67,7 +67,7 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white border border-slate-200 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 text-slate-800 relative">
+      <div className="bg-white border border-slate-200 w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 text-slate-800 relative">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-3">
           <div>

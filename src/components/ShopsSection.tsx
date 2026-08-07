@@ -278,10 +278,10 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
             return (
               <div
                 key={shop.id}
-                className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden group hover:-translate-y-1"
+                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden group"
               >
                 {/* Shop Cover Image */}
-                <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
+                <div className="relative h-32 sm:h-44 w-full bg-slate-950 overflow-hidden">
                   <img
                     src={shop.imageUrl}
                     alt={shop.name}
@@ -290,13 +290,13 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
 
                   {/* Top Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-orange-500 text-white px-2.5 py-1 rounded-full shadow-xs">
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-orange-500 text-white px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-xs">
                       {shop.categoryTitle || shop.category}
                     </span>
 
                     {shop.verified && (
-                      <span className="bg-blue-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
+                      <span className="bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1 shadow-xs">
                         <ShieldCheck className="w-3 h-3" />
                         Verificado
                       </span>
@@ -305,7 +305,7 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
 
                   {/* Discount Tag */}
                   {shop.discountPartner && (
-                    <div className="absolute bottom-3 left-3 right-3 bg-amber-500/95 text-slate-950 px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md backdrop-blur-xs">
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-amber-500/95 text-slate-950 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1 shadow-sm backdrop-blur-xs">
                       <Tag className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{shop.discountText || 'Socio con Descuento'}</span>
                     </div>
@@ -313,7 +313,7 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
                 </div>
 
                 {/* Card Content */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
                   <div className="space-y-2">
                     {/* Title & Rating */}
                     <div className="flex items-start justify-between gap-2">

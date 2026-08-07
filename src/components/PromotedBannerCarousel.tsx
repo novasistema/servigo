@@ -92,21 +92,21 @@ export const PromotedBannerCarousel: React.FC<PromotedBannerCarouselProps> = ({
       )}
 
       {/* Main Content */}
-      <div className="relative z-10 p-6 sm:p-8 flex flex-col justify-between min-h-[220px] sm:min-h-[240px]">
-        <div className="space-y-3 max-w-2xl">
+      <div className="relative z-10 p-4 sm:p-8 flex flex-col justify-between min-h-[170px] sm:min-h-[240px]">
+        <div className="space-y-2 sm:space-y-3 max-w-2xl">
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`px-3 py-1 rounded-full border text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md ${badgeClass}`}
+              className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 backdrop-blur-md ${badgeClass}`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               {currentBanner.badgeText || 'DESTACADO'}
             </span>
-            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest bg-slate-900/60 px-2.5 py-1 rounded-full border border-slate-800">
+            <span className="text-[9px] sm:text-[10px] text-slate-400 font-extrabold uppercase tracking-widest bg-slate-900/60 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-slate-800">
               Suscripción Creador
             </span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-sm">
+          <h2 className="text-base sm:text-2xl font-black text-white leading-tight drop-shadow-xs">
             {currentBanner.title}
           </h2>
 
@@ -116,15 +116,15 @@ export const PromotedBannerCarousel: React.FC<PromotedBannerCarouselProps> = ({
         </div>
 
         {/* Footer Bar: Action Button + Carousel Navigation Controls */}
-        <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-800/80 mt-4">
+        <div className="pt-2.5 sm:pt-4 flex flex-row items-center justify-between gap-3 border-t border-slate-800/80 mt-2.5 sm:mt-4">
           <a
             href={currentBanner.linkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="py-2.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 self-start sm:self-auto"
+            className="py-2 sm:py-2.5 px-3.5 sm:px-5 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-md active:scale-95"
           >
             <span>{currentBanner.buttonText || 'Contactar Ahora'}</span>
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </a>
 
           {/* Carousel Controls */}

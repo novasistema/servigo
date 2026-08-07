@@ -430,7 +430,7 @@ export default function App() {
             />
 
             {/* Catalog Grid */}
-            <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3.5 sm:space-y-4">
               {/* Results count header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 font-bold">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -457,7 +457,7 @@ export default function App() {
 
               {/* Grid of cards */}
               {filteredWorkers.length === 0 ? (
-                <div className="bg-white border-2 border-slate-200 rounded-3xl p-10 text-center space-y-3 shadow-sm">
+                <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-10 text-center space-y-3 shadow-sm">
                   <Wrench className="w-12 h-12 text-slate-400 mx-auto" />
                   <h3 className="text-base font-bold text-slate-800">
                     No encontramos profesionales para este filtro
@@ -480,13 +480,14 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
                   {filteredWorkers.map((worker) => (
                     <WorkerCard
                       key={worker.id}
                       worker={worker}
                       onSelectWorker={setSelectedWorkerForModal}
                       onOpenBooking={setSelectedWorkerForBooking}
+                      onOpenReviewModal={setSelectedWorkerForReview}
                     />
                   ))}
                 </div>

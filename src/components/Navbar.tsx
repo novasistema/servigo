@@ -83,41 +83,36 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Main Brand & Logo Header */}
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
         <div
           onClick={() => setActiveTab('search')}
-          className="flex items-center gap-3 cursor-pointer group select-none"
+          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none min-w-0"
         >
           {isValidCustomUrl && !logoError ? (
             <img
               src={customLogoUrl}
               alt="ServiGo Logo"
               onError={() => setLogoError(true)}
-              className="h-10 sm:h-12 w-auto object-contain rounded-xl max-w-[220px]"
+              className="h-8 sm:h-12 w-auto object-contain rounded-xl max-w-[180px] sm:max-w-[220px]"
             />
           ) : (
-            <div className="flex items-center gap-3">
-              {/* Clean Brand Emblem Icon */}
-              <div className="p-2.5 rounded-2xl bg-amber-400 text-slate-950 font-black shadow-md group-hover:scale-105 transition-transform shrink-0 flex items-center justify-center border border-amber-300">
-                <Wrench className="w-6 h-6 text-slate-950" />
-              </div>
-
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Brand Name Typography */}
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xl sm:text-3xl font-black tracking-tight text-white leading-none">
                     Servi
                     <span className="text-amber-300">
                       Go
                     </span>
-                    <span className="text-amber-300 text-xl font-black ml-0.5">+</span>
+                    <span className="text-amber-300 text-lg sm:text-xl font-black ml-0.5">+</span>
                   </span>
-                  <span className="bg-orange-500/90 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 border border-orange-400 shadow-xs">
+                  <span className="bg-orange-500/90 text-white text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5 border border-orange-400 shadow-xs">
                     <ShieldCheck className="w-3 h-3 text-amber-200" />
                     Bruzzone Network
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-orange-100 font-semibold tracking-wide mt-0.5">
+                <p className="text-[10px] sm:text-xs text-orange-100 font-semibold tracking-wide mt-0.5 truncate">
                   {customTagline || 'La solución que buscas, está aquí'}
                 </p>
               </div>
@@ -164,18 +159,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Navigation Tabs Bar */}
-      <div className="bg-white border-b border-slate-200/80 text-slate-700 px-3 py-1 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-around md:justify-start md:gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-white border-b border-slate-200/80 text-slate-700 px-2 sm:px-3 py-1 shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-start gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           {tabConfig.search && (
             <button
               onClick={() => setActiveTab('search')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'search'
-                  ? 'bg-orange-600 text-white shadow-sm'
+                  ? 'bg-orange-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Buscar Oficio</span>
             </button>
           )}
@@ -183,13 +178,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {tabConfig.shops && (
             <button
               onClick={() => setActiveTab('shops')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'shops'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Store className="w-4 h-4 text-blue-500" />
+              <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
               <span>Comercios & Negocios</span>
               <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
                 Nuevo
@@ -200,13 +195,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {tabConfig.ai && (
             <button
               onClick={() => setActiveTab('ai')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'ai'
-                  ? 'bg-purple-600 text-white shadow-sm'
+                  ? 'bg-purple-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-purple-500" />
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
               <span>Diagnóstico IA</span>
             </button>
           )}
@@ -214,13 +209,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {tabConfig.register && (
             <button
               onClick={() => setActiveTab('register')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'register'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Wrench className="w-4 h-4 text-emerald-600" />
+              <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
               <span>Soy Trabajador</span>
             </button>
           )}
@@ -228,13 +223,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {tabConfig.sponsor && (
             <button
               onClick={() => setActiveTab('bruzzone')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'bruzzone'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <ShoppingBag className="w-4 h-4 text-amber-600" />
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
               <span>Ferretería Bruzzone</span>
             </button>
           )}
@@ -242,16 +237,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           {tabConfig.bookings && (
             <button
               onClick={() => setActiveTab('bookings')}
-              className={`relative flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`relative flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'bookings'
-                  ? 'bg-slate-900 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Mis Solicitudes</span>
               {bookingCount > 0 && (
-                <span className="bg-orange-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
+                <span className="bg-orange-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
                   {bookingCount}
                 </span>
               )}

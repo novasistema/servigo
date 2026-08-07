@@ -21,6 +21,11 @@ service cloud.firestore {
     match /app_config/{configId} {
       allow read, create, update, delete: if true;
     }
+
+    // Shops & Businesses collection
+    match /shops/{shopId} {
+      allow read, create, update, delete: if true;
+    }
   }
 }
 
