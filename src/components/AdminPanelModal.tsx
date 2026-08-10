@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop } from '../types';
+import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver } from '../types';
 import { getMergedLocalities } from '../lib/zoneUtils';
 import {
   X,
@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   Briefcase,
   UserX,
+  Car,
 } from 'lucide-react';
 
 interface AdminPanelModalProps {
@@ -58,6 +59,9 @@ interface AdminPanelModalProps {
   shops?: Shop[];
   onSaveShop?: (shop: Shop) => Promise<void>;
   onDeleteShop?: (shopId: string) => Promise<void>;
+  remises?: RemisDriver[];
+  onSaveRemis?: (remis: RemisDriver) => Promise<void>;
+  onDeleteRemis?: (remisId: string) => Promise<void>;
   onClearAllData?: () => Promise<void>;
   onResetToDefaults?: () => Promise<void>;
   showToast: (msg: string) => void;
@@ -81,13 +85,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   shops = [],
   onSaveShop,
   onDeleteShop,
+  remises = [],
+  onSaveRemis,
+  onDeleteRemis,
   onClearAllData,
   onResetToDefaults,
   showToast,
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'shops' | 'reset'>('tabs');
+  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'reset'>('tabs');
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
   // Custom Logo and Branding states
@@ -115,6 +122,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [isSavingWorker, setIsSavingWorker] = useState(false);
   const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [isSavingShop, setIsSavingShop] = useState(false);
+
+  // Remis Management States
+  const [remisSearchTerm, setRemisSearchTerm] = useState('');
+  const [remisToDelete, setRemisToDelete] = useState<RemisDriver | null>(null);
+  const [isDeletingRemis, setIsDeletingRemis] = useState(false);
+  const [editingRemis, setEditingRemis] = useState<RemisDriver | null>(null);
+  const [isSavingRemis, setIsSavingRemis] = useState(false);
 
   // Reset Confirmation States
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
@@ -269,6 +283,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     );
   });
 
+  const filteredRemises = remises.filter((r) => {
+    const term = remisSearchTerm.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      r.name.toLowerCase().includes(term) ||
+      r.baseLocation.toLowerCase().includes(term) ||
+      r.vehicle.make.toLowerCase().includes(term) ||
+      r.vehicle.model.toLowerCase().includes(term) ||
+      r.vehicle.plate.toLowerCase().includes(term) ||
+      r.phone.includes(term)
+    );
+  });
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -354,7 +381,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           /* AUTHENTICATED PANEL BODY */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Tab Navigation Switches */}
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-7 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setActiveTab('tabs')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
@@ -419,6 +446,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
 
               <button
+                onClick={() => setActiveTab('remises')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'remises'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Car className="w-3.5 h-3.5 text-amber-500" />
+                <span>6. Remises ({remises.length})</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('reset')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'reset'
@@ -427,7 +466,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>6. Borrar</span>
+                <span>7. Borrar</span>
               </button>
             </div>
 
@@ -1470,7 +1509,183 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* TAB 6: REINICIAR Y BORRAR DATOS */}
+            {/* TAB 6: GESTIÓN DE REMISES & CONDUCTORES */}
+            {activeTab === 'remises' && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-white flex items-center gap-2">
+                        <Car className="w-4 h-4 text-amber-500" />
+                        Gestión de Remises & Conductores ({remises.length})
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Administra conductores, ajusta tarifas, modifica vehículos, cambia disponibilidad en vivo o elimina registros.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingRemis({
+                          id: `remis-${Date.now()}`,
+                          name: '',
+                          phone: '',
+                          whatsapp: '',
+                          vehicle: {
+                            make: 'Chevrolet',
+                            model: 'Corsa Classic',
+                            year: '2020',
+                            color: 'Blanco',
+                            plate: 'AA 000 AA',
+                          },
+                          photoUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=800',
+                          baseLocation: 'Río Cuarto',
+                          zones: ['Río Cuarto', 'Las Higueras'],
+                          status: 'disponible',
+                          baseRate: 1500,
+                          pricePerKm: 800,
+                          acceptsPets: true,
+                          hasAirConditioning: true,
+                          largeTrunk: true,
+                          rating: 5.0,
+                          totalTrips: 0,
+                          verified: true,
+                          coordinates: {
+                            lat: -33.123,
+                            lng: -64.349,
+                          },
+                        })
+                      }
+                      className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95 shrink-0 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Registrar Conductor</span>
+                    </button>
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative w-full sm:w-72 pt-2">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      value={remisSearchTerm}
+                      onChange={(e) => setRemisSearchTerm(e.target.value)}
+                      placeholder="Buscar por chofer, auto, patente o zona..."
+                      className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {filteredRemises.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+                    <Car className="w-12 h-12 text-slate-700 mx-auto" />
+                    <p className="text-sm text-slate-400 font-bold">
+                      {remisSearchTerm
+                        ? 'No se encontraron conductores con ese criterio de búsqueda.'
+                        : 'No hay remiseros registrados en la base de datos.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {filteredRemises.map((r) => (
+                      <div
+                        key={r.id}
+                        className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <img
+                            src={r.photoUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=150'}
+                            alt={r.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-800 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1 flex-wrap">
+                              <h4 className="text-xs font-black text-white truncate">{r.name}</h4>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {r.verified && (
+                                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                    <ShieldCheck className="w-2.5 h-2.5" />
+                                    Verificado
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase border ${
+                                    r.status === 'disponible'
+                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                      : r.status === 'en_viaje'
+                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                                  }`}
+                                >
+                                  {r.status === 'disponible' ? '🟢 Disponible' : r.status === 'en_viaje' ? '🟡 En Viaje' : '⚪ Fuera de Servicio'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="text-[11px] font-bold text-amber-400 truncate">
+                              🚗 {r.vehicle.make} {r.vehicle.model} ({r.vehicle.year}) • {r.vehicle.color}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              🪪 Patente: <span className="font-mono text-white font-bold">{r.vehicle.plate}</span> | 📍 {r.baseLocation}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              📞 Tel: {r.phone} | 💵 Bajada: ${r.baseRate} | Km: ${r.pricePerKm}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quick action controls for Admin */}
+                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setEditingRemis(r)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/30 transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                              title="Editar datos del conductor"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const nextStatus =
+                                  r.status === 'disponible'
+                                    ? 'en_viaje'
+                                    : r.status === 'en_viaje'
+                                    ? 'fuera_de_servicio'
+                                    : 'disponible';
+                                if (onSaveRemis) {
+                                  await onSaveRemis({ ...r, status: nextStatus });
+                                  showToast(`Estado de ${r.name} actualizado a: ${nextStatus}`);
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all text-[10px] font-bold cursor-pointer"
+                              title="Alternar estado de disponibilidad"
+                            >
+                              🔄 Cambio Estado
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setRemisToDelete(r)}
+                            className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all cursor-pointer"
+                            title="Eliminar conductor de la red"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 7: REINICIAR Y BORRAR DATOS */}
             {activeTab === 'reset' && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="bg-rose-950/40 border border-rose-500/30 rounded-3xl p-5 sm:p-6 space-y-4 text-rose-100">
@@ -1827,8 +2042,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   onChange={(e) => setEditingWorker({ ...editingWorker, location: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 cursor-pointer font-medium"
                 >
-                  {getMergedLocalities([editingWorker.location]).map((loc) => (
-                    <option key={loc} value={loc}>
+                  {getMergedLocalities([editingWorker.location]).map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>
                       📍 {loc}
                     </option>
                   ))}
@@ -2072,8 +2287,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   onChange={(e) => setEditingShop({ ...editingShop, location: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium cursor-pointer"
                 >
-                  {getMergedLocalities([editingShop.location]).map((loc) => (
-                    <option key={loc} value={loc}>
+                  {getMergedLocalities([editingShop.location]).map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>
                       📍 {loc}
                     </option>
                   ))}
@@ -2298,6 +2513,428 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               >
                 {isSavingShop ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 <span>Guardar Cambios del Comercio</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT REMIS MODAL */}
+      {editingRemis && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 space-y-5 text-white shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
+                <Car className="w-5 h-5 text-amber-400" />
+                {remises.some((r) => r.id === editingRemis.id)
+                  ? `Editar Conductor: ${editingRemis.name || 'Sin Nombre'}`
+                  : 'Nuevo Conductor de Remis'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingRemis(null)}
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Name */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Nombre Completo del Chofer *</label>
+                <input
+                  type="text"
+                  value={editingRemis.name}
+                  onChange={(e) => setEditingRemis({ ...editingRemis, name: e.target.value })}
+                  placeholder="Ej: Marcelo Fernández"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Teléfono Llamadas *</label>
+                <input
+                  type="text"
+                  value={editingRemis.phone}
+                  onChange={(e) => setEditingRemis({ ...editingRemis, phone: e.target.value })}
+                  placeholder="Ej: 0358 154123456"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* WhatsApp */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">WhatsApp Directo (549...)</label>
+                <input
+                  type="text"
+                  value={editingRemis.whatsapp}
+                  onChange={(e) => setEditingRemis({ ...editingRemis, whatsapp: e.target.value })}
+                  placeholder="Ej: 5493584123456"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Base Location */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Localidad Base *</label>
+                <select
+                  value={editingRemis.baseLocation}
+                  onChange={(e) => setEditingRemis({ ...editingRemis, baseLocation: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium cursor-pointer"
+                >
+                  {getMergedLocalities([editingRemis.baseLocation]).map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>
+                      📍 {loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Zones */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Zonas de Cobertura (Separadas por coma)</label>
+                <input
+                  type="text"
+                  value={(editingRemis.zones || []).join(', ')}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      zones: e.target.value
+                        .split(',')
+                        .map((z) => z.trim())
+                        .filter((z) => z.length > 0),
+                    })
+                  }
+                  placeholder="Ej: Río Cuarto, Las Higueras, Holmberg"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Vehicle Specs Header */}
+              <div className="sm:col-span-2 pt-2 border-t border-slate-800">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
+                  <Car className="w-4 h-4" />
+                  Datos del Vehículo
+                </h4>
+              </div>
+
+              {/* Make */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Marca *</label>
+                <input
+                  type="text"
+                  value={editingRemis.vehicle.make}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      vehicle: { ...editingRemis.vehicle, make: e.target.value },
+                    })
+                  }
+                  placeholder="Ej: Toyota, Chevrolet, Renault"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Model */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Modelo *</label>
+                <input
+                  type="text"
+                  value={editingRemis.vehicle.model}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      vehicle: { ...editingRemis.vehicle, model: e.target.value },
+                    })
+                  }
+                  placeholder="Ej: Corolla, Classic, Logan"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Year */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Año</label>
+                <input
+                  type="text"
+                  value={editingRemis.vehicle.year}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      vehicle: { ...editingRemis.vehicle, year: e.target.value },
+                    })
+                  }
+                  placeholder="Ej: 2021"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Color</label>
+                <input
+                  type="text"
+                  value={editingRemis.vehicle.color}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      vehicle: { ...editingRemis.vehicle, color: e.target.value },
+                    })
+                  }
+                  placeholder="Ej: Gris Plata, Blanco, Negro"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Plate */}
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-300 mb-1">Patente / Dominio *</label>
+                <input
+                  type="text"
+                  value={editingRemis.vehicle.plate}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      vehicle: { ...editingRemis.vehicle, plate: e.target.value.toUpperCase() },
+                    })
+                  }
+                  placeholder="Ej: AA 123 CD"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-mono uppercase font-bold"
+                />
+              </div>
+
+              {/* Tarifas Header */}
+              <div className="sm:col-span-2 pt-2 border-t border-slate-800">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
+                  💵 Tarifas y Disponibilidad
+                </h4>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Estado de Servicio</label>
+                <select
+                  value={editingRemis.status}
+                  onChange={(e) =>
+                    setEditingRemis({
+                      ...editingRemis,
+                      status: e.target.value as 'disponible' | 'en_viaje' | 'fuera_de_servicio',
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-bold cursor-pointer"
+                >
+                  <option value="disponible">🟢 Disponible</option>
+                  <option value="en_viaje">🟡 En Viaje</option>
+                  <option value="fuera_de_servicio">⚪ Fuera de Servicio</option>
+                </select>
+              </div>
+
+              {/* Base Rate */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Bajada de Bandera ($ ARS)</label>
+                <input
+                  type="number"
+                  value={editingRemis.baseRate}
+                  onChange={(e) =>
+                    setEditingRemis({ ...editingRemis, baseRate: Number(e.target.value) || 0 })
+                  }
+                  placeholder="Ej: 1500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Price Per Km */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Precio por Km ($ ARS)</label>
+                <input
+                  type="number"
+                  value={editingRemis.pricePerKm}
+                  onChange={(e) =>
+                    setEditingRemis({ ...editingRemis, pricePerKm: Number(e.target.value) || 0 })
+                  }
+                  placeholder="Ej: 800"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Photo URL */}
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Foto de Perfil / Vehículo URL</label>
+                <input
+                  type="text"
+                  value={editingRemis.photoUrl || ''}
+                  onChange={(e) => setEditingRemis({ ...editingRemis, photoUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              {/* Features / Checkboxes */}
+              <div className="sm:col-span-2 space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px]">
+                  Equipamiento y Atributos Especiales
+                </h4>
+
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-black text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      Conductor Verificado por ServiGo
+                    </span>
+                    <p className="text-[11px] text-slate-400">Muestra la insignia verde de chofer verificado.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingRemis.verified || false}
+                    onChange={(e) => setEditingRemis({ ...editingRemis, verified: e.target.checked })}
+                    className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-sky-300">❄️ Posee Aire Acondicionado</span>
+                    <p className="text-[11px] text-slate-400">Ideal para viajes largos en verano.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingRemis.hasAirConditioning}
+                    onChange={(e) =>
+                      setEditingRemis({ ...editingRemis, hasAirConditioning: e.target.checked })
+                    }
+                    className="w-5 h-5 accent-sky-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-amber-300">🐶 Acepta Mascotas (Pet Friendly)</span>
+                    <p className="text-[11px] text-slate-400">Permite traslado de animales domésticos.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingRemis.acceptsPets}
+                    onChange={(e) =>
+                      setEditingRemis({ ...editingRemis, acceptsPets: e.target.checked })
+                    }
+                    className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-900 transition-colors">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-purple-300">🧳 Baúl Amplio para Valijas / Cargas</span>
+                    <p className="text-[11px] text-slate-400">Apto para viajes a terminales o aeropuertos.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editingRemis.largeTrunk}
+                    onChange={(e) =>
+                      setEditingRemis({ ...editingRemis, largeTrunk: e.target.checked })
+                    }
+                    className="w-5 h-5 accent-purple-500 rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingRemis(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingRemis}
+                onClick={async () => {
+                  if (!editingRemis.name.trim()) {
+                    showToast('El nombre del conductor no puede estar vacío');
+                    return;
+                  }
+                  if (!editingRemis.phone.trim()) {
+                    showToast('El teléfono no puede estar vacío');
+                    return;
+                  }
+                  try {
+                    setIsSavingRemis(true);
+                    if (onSaveRemis) {
+                      await onSaveRemis(editingRemis);
+                    }
+                    setEditingRemis(null);
+                    showToast(`¡Conductor "${editingRemis.name}" guardado exitosamente!`);
+                  } catch (err) {
+                    console.error(err);
+                    showToast('❌ Error al guardar datos del conductor.');
+                  } finally {
+                    setIsSavingRemis(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+              >
+                {isSavingRemis ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Guardar Cambios del Conductor</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE REMIS MODAL */}
+      {remisToDelete && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl max-w-md w-full p-6 text-white space-y-5 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-base font-black text-white">
+                ¿Eliminar conductor {remisToDelete.name}?
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Esta acción dará de baja al chofer con vehículo <span className="font-bold text-amber-400">{remisToDelete.vehicle.make} {remisToDelete.vehicle.model} ({remisToDelete.vehicle.plate})</span> de la plataforma.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRemisToDelete(null)}
+                className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingRemis}
+                onClick={async () => {
+                  try {
+                    setIsDeletingRemis(true);
+                    if (onDeleteRemis) {
+                      await onDeleteRemis(remisToDelete.id);
+                    }
+                    setRemisToDelete(null);
+                    showToast(`🗑️ Conductor "${remisToDelete.name}" eliminado.`);
+                  } catch (err) {
+                    console.error(err);
+                    showToast('❌ Error al eliminar el remis.');
+                  } finally {
+                    setIsDeletingRemis(false);
+                  }
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+              >
+                {isDeletingRemis ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>Eliminar Definitivamente</span>
               </button>
             </div>
           </div>

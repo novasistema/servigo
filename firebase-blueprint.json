@@ -75,6 +75,30 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "workerId", "clientName", "clientPhone", "clientAddress", "date", "description"]
+    },
+    "RemisDriver": {
+      "title": "RemisDriver",
+      "description": "Conductores de remises registrados en la red ServiGo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "status"]
+    },
+    "RideRequest": {
+      "title": "RideRequest",
+      "description": "Pedidos de viajes en remis de usuarios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "origin": { "type": "string" },
+        "destination": { "type": "string" }
+      },
+      "required": ["id", "clientName", "origin", "destination"]
     }
   },
   "firestore": {
@@ -86,6 +110,14 @@
       "bookings": {
         "entity": "BookingRequest",
         "description": "Colección de reservas/solicitudes de turnos"
+      },
+      "remises": {
+        "entity": "RemisDriver",
+        "description": "Colección de conductores de remis"
+      },
+      "ride_requests": {
+        "entity": "RideRequest",
+        "description": "Colección de solicitudes de viaje"
       }
     }
   }

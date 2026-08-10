@@ -344,6 +344,30 @@ export default function App() {
     }
   };
 
+  const handleSaveRemis = async (remis: RemisDriver) => {
+    setRemises((prev) => {
+      const exists = prev.some((r) => r.id === remis.id);
+      if (exists) {
+        return prev.map((r) => (r.id === remis.id ? remis : r));
+      }
+      return [remis, ...prev];
+    });
+    try {
+      await saveRemisToFirestore(remis);
+    } catch (err) {
+      console.error('Failed to save remis to Firestore:', err);
+    }
+  };
+
+  const handleDeleteRemis = async (remisId: string) => {
+    setRemises((prev) => prev.filter((r) => r.id !== remisId));
+    try {
+      await deleteRemisFromFirestore(remisId);
+    } catch (err) {
+      console.error('Failed to delete remis from Firestore:', err);
+    }
+  };
+
   const handleUpdateRemisStatus = async (
     remisId: string,
     status: 'disponible' | 'en_viaje' | 'fuera_de_servicio'
@@ -747,6 +771,9 @@ export default function App() {
         shops={shops}
         onSaveShop={handleSaveShop}
         onDeleteShop={handleDeleteShop}
+        remises={remises}
+        onSaveRemis={handleSaveRemis}
+        onDeleteRemis={handleDeleteRemis}
         onClearAllData={async () => {
           await clearAllFirestoreData();
           localStorage.removeItem('servigo_workers_v1');

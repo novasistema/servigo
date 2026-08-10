@@ -269,8 +269,8 @@ export const RemisRegisterModal: React.FC<RemisRegisterModalProps> = ({
                   onChange={(e) => setFormData({ ...formData, baseLocation: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-500 bg-slate-50 cursor-pointer"
                 >
-                  {localitiesList.map((loc) => (
-                    <option key={loc} value={loc}>
+                  {localitiesList.map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>
                       📍 {loc}
                     </option>
                   ))}

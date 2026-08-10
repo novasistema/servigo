@@ -424,11 +424,27 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                     <option value="jardineria">🌿 Jardines y Poda</option>
                     <option value="carpinteria">🪚 Carpintería</option>
                     <option value="fletes">🚚 Fletes y Mudanzas</option>
-                    {customTrades.map((ct) => (
-                      <option key={ct.id} value={ct.id}>
-                        {ct.icon || '🛠️'} {ct.label}
-                      </option>
-                    ))}
+                    {customTrades
+                      .filter(
+                        (ct) =>
+                          ![
+                            'gasista',
+                            'electricista',
+                            'plomero',
+                            'pintor',
+                            'cerrajero',
+                            'aire_acondicionado',
+                            'albanil',
+                            'jardineria',
+                            'carpinteria',
+                            'fletes',
+                          ].includes(ct.id)
+                      )
+                      .map((ct, idx) => (
+                        <option key={`${ct.id}-${idx}`} value={ct.id}>
+                          {ct.icon || '🛠️'} {ct.label}
+                        </option>
+                      ))}
                     <option value="CREATE_NEW">➕ ¿No está tu rubro? Crear nuevo rubro...</option>
                   </select>
                 </div>
@@ -586,8 +602,8 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                   onChange={(e) => setLocation(e.target.value)}
                   className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
                 >
-                  {argentineLocalities.map((loc) => (
-                    <option key={loc} value={loc}>
+                  {argentineLocalities.map((loc, idx) => (
+                    <option key={`${loc}-${idx}`} value={loc}>
                       📍 {loc}
                     </option>
                   ))}

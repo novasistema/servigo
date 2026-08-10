@@ -229,8 +229,8 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
               className="px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all cursor-pointer flex-1"
             >
               <option value="all">📍 Todas las Zonas</option>
-              {allZones.map((z) => (
-                <option key={z} value={z}>
+              {allZones.map((z, idx) => (
+                <option key={`${z}-${idx}`} value={z}>
                   📍 {z}
                 </option>
               ))}

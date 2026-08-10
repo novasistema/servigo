@@ -62,8 +62,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       icon: ct.icon || '🛠️',
       color: ct.color || 'bg-purple-100 text-purple-700',
     }));
-    return [...TRADE_OPTIONS, ...customOptions];
+    const combined = [...TRADE_OPTIONS, ...customOptions];
+    const seen = new Set<string>();
+    return combined.filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
   }, [customTrades]);
+
+  const uniqueZones = React.useMemo(() => {
+    return Array.from(new Set(availableZones));
+  }, [availableZones]);
 
   const activeFilterCount =
     (selectedTrade !== 'all' ? 1 : 0) +
@@ -115,8 +125,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               className="bg-transparent outline-none text-slate-700 font-medium text-xs sm:text-sm w-full cursor-pointer"
             >
               <option value="all">Todas las Zonas</option>
-              {availableZones.map((zone) => (
-                <option key={zone} value={zone}>
+              {uniqueZones.map((zone, idx) => (
+                <option key={`${zone}-${idx}`} value={zone}>
                   {zone}
                 </option>
               ))}

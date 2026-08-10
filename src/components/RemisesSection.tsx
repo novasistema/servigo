@@ -277,8 +277,8 @@ export const RemisesSection: React.FC<RemisesSectionProps> = ({
                 onChange={(e) => setOrigin(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-orange-500 cursor-pointer"
               >
-                {localities.map((loc) => (
-                  <option key={loc} value={loc}>
+                {localities.map((loc, idx) => (
+                  <option key={`${loc}-${idx}`} value={loc}>
                     📍 {loc}
                   </option>
                 ))}
@@ -300,8 +300,8 @@ export const RemisesSection: React.FC<RemisesSectionProps> = ({
                 onChange={(e) => setDestination(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-orange-500 cursor-pointer"
               >
-                {localities.map((loc) => (
-                  <option key={loc} value={loc}>
+                {localities.map((loc, idx) => (
+                  <option key={`${loc}-${idx}`} value={loc}>
                     🏁 {loc}
                   </option>
                 ))}
@@ -463,8 +463,8 @@ export const RemisesSection: React.FC<RemisesSectionProps> = ({
               className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:border-orange-500 cursor-pointer"
             >
               <option value="all">📍 Todas las Localidades</option>
-              {localities.map((loc) => (
-                <option key={loc} value={loc}>
+              {localities.map((loc, idx) => (
+                <option key={`${loc}-${idx}`} value={loc}>
                   📍 {loc}
                 </option>
               ))}

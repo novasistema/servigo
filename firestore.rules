@@ -26,6 +26,16 @@ service cloud.firestore {
     match /shops/{shopId} {
       allow read, create, update, delete: if true;
     }
+
+    // Remises & Conductores collection
+    match /remises/{remisId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Ride Requests collection
+    match /ride_requests/{requestId} {
+      allow read, create, update, delete: if true;
+    }
   }
 }
 
