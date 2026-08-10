@@ -12,7 +12,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { Shop } from '../types';
-import { normalizeZoneKey } from '../lib/zoneUtils';
+import { normalizeZoneKey, getMergedLocalities } from '../lib/zoneUtils';
 
 interface ShopRegisterModalProps {
   isOpen: boolean;
@@ -25,16 +25,17 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
   isOpen,
   onClose,
   onSubmitShop,
-  availableZones = ['Alejandro Roca', 'Río Cuarto', 'La Carlota', 'San Isidro', 'Vicente López', 'Tigre'],
+  availableZones = [],
 }) => {
+  const mergedZones = getMergedLocalities(availableZones);
   const [formData, setFormData] = useState({
     name: '',
     category: 'ferreteria',
     categoryTitle: 'Ferretería & Insumos',
     description: '',
     address: '',
-    location: availableZones[0] || 'Alejandro Roca',
-    zones: [availableZones[0] || 'Alejandro Roca'],
+    location: mergedZones[0] || 'Alejandro Roca',
+    zones: [mergedZones[0] || 'Alejandro Roca'],
     phone: '',
     whatsapp: '',
     email: '',
@@ -214,7 +215,7 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-xs sm:text-sm font-semibold bg-white"
               >
-                {availableZones.map((z) => (
+                {mergedZones.map((z) => (
                   <option key={z} value={z}>
                     {z}
                   </option>
@@ -331,7 +332,7 @@ export const ShopRegisterModal: React.FC<ShopRegisterModalProps> = ({
                 Zonas Cercanas donde ofrecen Atencion / Reparto
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {availableZones.map((zone) => {
+                {mergedZones.map((zone) => {
                   const norm = normalizeZoneKey(zone);
                   const isSelected = formData.zones.some((z) => normalizeZoneKey(z) === norm);
                   return (

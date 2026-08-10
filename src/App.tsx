@@ -13,12 +13,19 @@ import { PromotedBannerCarousel } from './components/PromotedBannerCarousel';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { RegistrationPdfGuideModal } from './components/RegistrationPdfGuideModal';
 import { ShopsSection } from './components/ShopsSection';
-import { INITIAL_WORKERS, BRUZZONE_PRODUCTS, INITIAL_SHOPS } from './data/mockData';
-import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop } from './types';
+import { RemisesSection } from './components/RemisesSection';
+import { INITIAL_WORKERS, BRUZZONE_PRODUCTS, INITIAL_SHOPS, INITIAL_REMISES } from './data/mockData';
+import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop, RemisDriver, RideRequest } from './types';
 import {
   subscribeWorkers,
   subscribeBookings,
   subscribeShops,
+  subscribeRemises,
+  subscribeRideRequests,
+  saveRemisToFirestore,
+  updateRemisStatus,
+  deleteRemisFromFirestore,
+  saveRideRequestToFirestore,
   saveShopToFirestore,
   deleteShopFromFirestore,
   saveWorkerToFirestore,
@@ -70,7 +77,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {
@@ -79,6 +86,24 @@ export default function App() {
     }
     return INITIAL_SHOPS;
   });
+
+  const [remises, setRemises] = useState<RemisDriver[]>(() => {
+    const saved = localStorage.getItem('servigo_remises_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_REMISES;
+  });
+
+  const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
+
   const [tabConfig, setTabConfig] = useState<TabVisibilityConfig>(DEFAULT_TAB_CONFIG);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
@@ -107,6 +132,18 @@ export default function App() {
       setIsCloudSynced(true);
     });
 
+    const unsubscribeRemises = subscribeRemises((firestoreRemises) => {
+      if (firestoreRemises && firestoreRemises.length > 0) {
+        setRemises(firestoreRemises);
+        localStorage.setItem('servigo_remises_v1', JSON.stringify(firestoreRemises));
+      }
+      setIsCloudSynced(true);
+    });
+
+    const unsubscribeRideRequests = subscribeRideRequests((firestoreRequests) => {
+      setRideRequests(firestoreRequests);
+    });
+
     const unsubscribeBanners = subscribeBanners((firestoreBanners) => {
       setBanners(firestoreBanners);
     });
@@ -124,6 +161,8 @@ export default function App() {
       unsubscribeWorkers();
       unsubscribeBookings();
       unsubscribeShops();
+      unsubscribeRemises();
+      unsubscribeRideRequests();
       unsubscribeBanners();
       unsubscribeConfig();
     };
@@ -142,9 +181,13 @@ export default function App() {
     localStorage.setItem('servigo_shops_v1', JSON.stringify(shops));
   }, [shops]);
 
+  useEffect(() => {
+    localStorage.setItem('servigo_remises_v1', JSON.stringify(remises));
+  }, [remises]);
+
   // Navigation state
   const [activeTab, setActiveTab] = useState<
-    'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings'
+    'search' | 'shops' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings'
   >('search');
 
   // Fallback active tab if current tab gets disabled by admin
@@ -288,6 +331,39 @@ export default function App() {
       await deleteShopFromFirestore(shopId);
     } catch (err) {
       console.error('Failed to delete shop from Firestore:', err);
+    }
+  };
+
+  const handleAddRemis = async (newRemis: RemisDriver) => {
+    setRemises((prev) => [newRemis, ...prev]);
+    showToast(`🚕 ¡Conductor ${newRemis.name} guardado con éxito!`);
+    try {
+      await saveRemisToFirestore(newRemis);
+    } catch (err) {
+      console.error('Failed to save remis to Firestore:', err);
+    }
+  };
+
+  const handleUpdateRemisStatus = async (
+    remisId: string,
+    status: 'disponible' | 'en_viaje' | 'fuera_de_servicio'
+  ) => {
+    setRemises((prev) =>
+      prev.map((r) => (r.id === remisId ? { ...r, status } : r))
+    );
+    try {
+      await updateRemisStatus(remisId, status);
+    } catch (err) {
+      console.error('Failed to update remis status:', err);
+    }
+  };
+
+  const handleRequestRide = async (request: RideRequest) => {
+    setRideRequests((prev) => [request, ...prev]);
+    try {
+      await saveRideRequestToFirestore(request);
+    } catch (err) {
+      console.error('Failed to save ride request to Firestore:', err);
     }
   };
 
@@ -526,6 +602,19 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 2.5: REMISES & VIAJES */}
+        {activeTab === 'remises' && (
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <RemisesSection
+              remises={remises}
+              onAddRemis={handleAddRemis}
+              onUpdateRemisStatus={handleUpdateRemisStatus}
+              onRequestRide={handleRequestRide}
+              showToast={showToast}
+            />
+          </div>
+        )}
+
         {/* TAB 3: REGISTER WORKER PORTAL */}
         {activeTab === 'register' && (
           <div className="px-4 py-6">
@@ -662,9 +751,12 @@ export default function App() {
           await clearAllFirestoreData();
           localStorage.removeItem('servigo_workers_v1');
           localStorage.removeItem('servigo_bookings_v1');
+          localStorage.removeItem('servigo_shops_v1');
+          localStorage.removeItem('servigo_remises_v1');
           setWorkers([]);
           setBookings([]);
           setShops([]);
+          setRemises([]);
           setBanners([]);
           setTabConfig(DEFAULT_TAB_CONFIG);
           showToast('💥 ¡Todos los datos han sido borrados por completo! Sistema iniciado en blanco.');
@@ -673,6 +765,8 @@ export default function App() {
           await resetFirestoreToDefaults();
           localStorage.removeItem('servigo_workers_v1');
           localStorage.removeItem('servigo_bookings_v1');
+          localStorage.removeItem('servigo_shops_v1');
+          localStorage.removeItem('servigo_remises_v1');
           showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
         }}
         showToast={showToast}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop } from '../types';
+import { getMergedLocalities } from '../lib/zoneUtils';
 import {
   X,
   Lock,
@@ -565,6 +566,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   {[
                     { key: 'search', label: '🔍 Buscar Oficios (Index / Catálogo)', desc: 'Vista principal con el buscador de profesionales' },
                     { key: 'shops', label: '🏪 Comercios & Negocios (Ferreterías, Talleres, Corralones)', desc: 'Guía comercial de la zona con mapa, WhatsApp y descuentos' },
+                    { key: 'remises', label: '🚕 Remises & Viajes', desc: 'Red de remiseros con mapa interactivo en vivo y pedidos directos' },
                     { key: 'register', label: '👷 Soy Trabajador (Publicar Perfil)', desc: 'Formulario de registro para nuevos prestadores' },
                     { key: 'sponsor', label: '🏬 Ferretería Bruzzone (Tienda Oficial)', desc: 'Espacio patrocinado con catálogo de materiales' },
                     { key: 'ai', label: '🤖 Diagnóstico IA (Asistente Técnico)', desc: 'Evaluador automatizado de presupuestos e insumos' },
@@ -1540,7 +1542,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     Nota para el Administrador:
                   </span>
                   <p>
-                    Las acciones ejecutadas en esta pestaña se sincronizan de inmediato en tiempo real con Cloud Firestore y se reflejan en todos los usuarios conectados a ServiLibre.
+                    Las acciones ejecutadas en esta pestaña se sincronizan de inmediato en tiempo real con Cloud Firestore y se reflejan en todos los usuarios conectados a ServiGo.
                   </p>
                 </div>
               </div>
@@ -1819,13 +1821,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* Location */}
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Localidad Principal</label>
-                <input
-                  type="text"
+                <label className="block font-bold text-slate-300 mb-1">Localidad Principal *</label>
+                <select
                   value={editingWorker.location}
                   onChange={(e) => setEditingWorker({ ...editingWorker, location: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
-                />
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 cursor-pointer font-medium"
+                >
+                  {getMergedLocalities([editingWorker.location]).map((loc) => (
+                    <option key={loc} value={loc}>
+                      📍 {loc}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Zones */}
@@ -1918,7 +1925,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <div className="space-y-0.5">
                     <span className="font-black text-emerald-400 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      Verificado por ServiLibre
+                      Verificado por ServiGo
                     </span>
                     <p className="text-[11px] text-slate-400">Muestra la tilde de perfil verificado.</p>
                   </div>
@@ -2060,13 +2067,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* Location */}
               <div>
                 <label className="block font-bold text-slate-300 mb-1">Localidad / Ciudad *</label>
-                <input
-                  type="text"
+                <select
                   value={editingShop.location}
                   onChange={(e) => setEditingShop({ ...editingShop, location: e.target.value })}
-                  placeholder="Ej: Río Cuarto"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
-                />
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium cursor-pointer"
+                >
+                  {getMergedLocalities([editingShop.location]).map((loc) => (
+                    <option key={loc} value={loc}>
+                      📍 {loc}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Zones */}

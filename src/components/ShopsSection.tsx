@@ -49,7 +49,7 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   const [copiedShopId, setCopiedShopId] = useState<string | null>(null);
 
   const activeShops = useMemo(() => {
-    if (shops && Array.isArray(shops) && shops.length > 0) {
+    if (shops && Array.isArray(shops)) {
       return shops;
     }
     return INITIAL_SHOPS;
@@ -143,7 +143,8 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
     });
   }, [activeShops, localZone, selectedCategory, onlyDiscount, onlyVerified, searchQuery]);
 
-  const shopsToRender = filteredShops.length > 0 ? filteredShops : activeShops;
+  const hasFilterActive = selectedCategory !== 'todos' || Boolean(searchQuery) || localZone !== 'all' || onlyDiscount || onlyVerified;
+  const shopsToRender = filteredShops.length > 0 ? filteredShops : (hasFilterActive ? activeShops : []);
 
   const handleRegisterNewShop = async (newShop: Shop) => {
     // Reset filters so the new shop is immediately visible
@@ -314,13 +315,35 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
       </div>
 
       {/* Grid of Shops */}
-      {filteredShops.length === 0 && (
-        <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-2xl px-4 py-3 text-center shadow-xs">
-          No se encontraron comercios con los filtros exactos. Mostrando todos los comercios disponibles:
+      {shopsToRender.length === 0 ? (
+        <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 space-y-4 my-4">
+          <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Store className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-base font-black text-slate-800">
+              No hay comercios disponibles
+            </h3>
+            <p className="text-xs text-slate-500">
+              No se encontraron comercios registrados en esta sección o fueron eliminados por el administrador.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsRegisterModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 transition-all cursor-pointer shadow-xs"
+          >
+            + Sumar Comercio / Pyme
+          </button>
         </div>
-      )}
+      ) : (
+        <>
+          {filteredShops.length === 0 && activeShops.length > 0 && (
+            <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-2xl px-4 py-3 text-center shadow-xs mb-4">
+              No se encontraron comercios con los filtros exactos. Mostrando todos los comercios disponibles:
+            </div>
+          )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {shopsToRender.map((shop) => {
             const whatsappMsg = encodeURIComponent(
               `Hola ${shop.name}, los encontré en ServiGo. Quisiera consultar sobre sus productos.`
@@ -473,6 +496,8 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
             );
           })}
         </div>
+        </>
+      )}
 
       {/* Detail Modal */}
       <ShopDetailModal

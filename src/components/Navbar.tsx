@@ -1,12 +1,12 @@
 import React from 'react';
-import { Wrench, Search, UserPlus, Sparkles, ShoppingBag, Calendar, ShieldCheck, ChevronRight, Settings, FileText, Store } from 'lucide-react';
+import { Wrench, Search, UserPlus, Sparkles, ShoppingBag, Calendar, ShieldCheck, ChevronRight, Settings, FileText, Store, Car } from 'lucide-react';
 import { TabVisibilityConfig } from '../types';
 import servigoOfficialLogo from '../assets/logo.jpg';
 import servigoIcon from '../assets/icon.jpg';
 
 interface NavbarProps {
-  activeTab: 'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings';
-  setActiveTab: (tab: 'search' | 'shops' | 'register' | 'ai' | 'bruzzone' | 'bookings') => void;
+  activeTab: 'search' | 'shops' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings';
+  setActiveTab: (tab: 'search' | 'shops' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings') => void;
   bookingCount: number;
   tabConfig?: TabVisibilityConfig;
   customLogoUrl?: string;
@@ -20,7 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   bookingCount,
-  tabConfig = { search: true, shops: true, register: true, sponsor: true, ai: true, bookings: true },
+  tabConfig = { search: true, shops: true, remises: true, register: true, sponsor: true, ai: true, bookings: true },
   customLogoUrl,
   customTagline,
   onOpenAdminPanel,
@@ -186,6 +186,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
               <span>Comercios & Negocios</span>
+            </button>
+          )}
+
+          {tabConfig.remises !== false && (
+            <button
+              onClick={() => setActiveTab('remises')}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                activeTab === 'remises'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+              <span>Remises / Viajes</span>
               <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
                 Nuevo
               </span>

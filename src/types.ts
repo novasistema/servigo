@@ -42,7 +42,7 @@ export interface Worker {
   rating: number;
   reviewCount: number;
   completedJobs: number;
-  verified: boolean; // Verified by ServiLibre / Ferretería Bruzzone
+  verified: boolean; // Verified by ServiGo / Ferretería Bruzzone
   ferreteroPartner: boolean; // Purchases at Ferretería Bruzzone & gives 10% labor discount
   hourlyRate: number; // ARS
   visitFee: number; // ARS
@@ -113,10 +113,58 @@ export interface Shop {
 export interface TabVisibilityConfig {
   search: boolean;     // "Buscar Oficio"
   shops: boolean;      // "Comercios & Negocios"
+  remises?: boolean;   // "Remises & Viajes"
   register: boolean;   // "Soy Trabajador"
   sponsor: boolean;    // "Ferretería Bruzzone"
   ai: boolean;         // "Diagnóstico IA"
   bookings: boolean;   // "Mis Turnos"
+}
+
+export interface RemisDriver {
+  id: string;
+  name: string;
+  phone: string;
+  whatsapp: string;
+  vehicle: {
+    make: string;      // e.g. "Toyota"
+    model: string;     // e.g. "Corolla"
+    year: string;      // e.g. "2022"
+    color: string;     // e.g. "Gris Plata"
+    plate: string;     // e.g. "AF 123 CD"
+  };
+  photoUrl?: string;
+  baseLocation: string; // e.g. "Alejandro Roca"
+  zones: string[];      // e.g. ["Alejandro Roca", "Río Cuarto", "La Carlota"]
+  status: 'disponible' | 'en_viaje' | 'fuera_de_servicio';
+  baseRate: number;     // Bajada de bandera (ARS) e.g. 1500
+  pricePerKm: number;   // Precio por km (ARS) e.g. 800
+  acceptsPets: boolean;
+  hasAirConditioning: boolean;
+  largeTrunk: boolean;
+  rating: number;
+  totalTrips: number;
+  verified: boolean;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  createdAt?: string;
+}
+
+export interface RideRequest {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  origin: string;
+  destination: string;
+  passengers: number;
+  estimatedDistanceKm: number;
+  estimatedFare: number;
+  selectedDriverId?: string;
+  selectedDriverName?: string;
+  status: 'pendiente' | 'aceptado' | 'en_camino' | 'completado' | 'cancelado';
+  notes?: string;
+  createdAt: string;
 }
 
 export interface AppConfig {

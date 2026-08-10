@@ -13,8 +13,8 @@ import {
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop } from '../types';
-import { INITIAL_WORKERS, INITIAL_SHOPS } from '../data/mockData';
+import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop, RemisDriver, RideRequest } from '../types';
+import { INITIAL_WORKERS, INITIAL_SHOPS, INITIAL_REMISES } from '../data/mockData';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App lazily/safely
@@ -30,10 +30,13 @@ const BOOKINGS_COLLECTION = 'bookings';
 const BANNERS_COLLECTION = 'banners';
 const APP_CONFIG_COLLECTION = 'app_config';
 const SHOPS_COLLECTION = 'shops';
+const REMISES_COLLECTION = 'remises';
+const RIDE_REQUESTS_COLLECTION = 'ride_requests';
 
 export const DEFAULT_TAB_CONFIG: TabVisibilityConfig = {
   search: true,
   shops: true,
+  remises: true,
   register: true,
   sponsor: true,
   ai: true,
@@ -48,7 +51,7 @@ export const INITIAL_BANNERS: PromotedBanner[] = [
     badgeText: 'DESTACADO VIP',
     badgeColor: 'amber',
     imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=1200',
-    linkUrl: 'https://wa.me/5491133334444?text=Hola%20Roberto,%20vi%20tu%20anuncio%20destacado%20en%20ServiLibre',
+    linkUrl: 'https://wa.me/5491133334444?text=Hola%20Roberto,%20vi%20tu%20anuncio%20destacado%20en%20ServiGo',
     buttonText: 'Contactar por WhatsApp',
     active: true,
     priority: 1,
@@ -312,6 +315,9 @@ export async function deleteBannerFromFirestore(bannerId: string): Promise<void>
 export function subscribeShops(onData: (shops: Shop[]) => void): () => void {
   const shopsRef = collection(db, SHOPS_COLLECTION);
 
+  // Check and seed if database has never been initialized
+  ensureDatabaseInitialized();
+
   const unsubscribe = onSnapshot(
     shopsRef,
     (snapshot) => {
@@ -323,17 +329,11 @@ export function subscribeShops(onData: (shops: Shop[]) => void): () => void {
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-      // If collection is empty, seed initial shops
-      if (snapshot.empty || shopsList.length === 0) {
-        INITIAL_SHOPS.forEach((shop) => saveShopToFirestore(shop).catch(console.error));
-        onData(INITIAL_SHOPS);
-      } else {
-        onData(shopsList);
-      }
+      onData(shopsList);
     },
     (error) => {
       console.error('Error in shops listener:', error);
-      onData(INITIAL_SHOPS);
+      onData([]);
     }
   );
 
@@ -363,6 +363,130 @@ export async function deleteShopFromFirestore(shopId: string): Promise<void> {
     await deleteDoc(shopRef);
   } catch (error) {
     console.error('Error deleting shop from Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Remises drivers
+ */
+export function subscribeRemises(onData: (remises: RemisDriver[]) => void): () => void {
+  const remisesRef = collection(db, REMISES_COLLECTION);
+  ensureDatabaseInitialized();
+
+  const unsubscribe = onSnapshot(
+    remisesRef,
+    (snapshot) => {
+      const remisesList: RemisDriver[] = snapshot.docs.map((doc) => doc.data() as RemisDriver);
+      onData(remisesList);
+    },
+    (error) => {
+      console.error('Error in remises listener:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update Remis driver in Firestore
+ */
+export async function saveRemisToFirestore(remis: RemisDriver): Promise<void> {
+  try {
+    const cleanRemis = sanitizeForFirestore(remis);
+    const remisRef = doc(db, REMISES_COLLECTION, cleanRemis.id);
+    await setDoc(remisRef, cleanRemis, { merge: true });
+  } catch (error) {
+    console.error('Error saving remis driver to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update Remis status (disponible, en_viaje, fuera_de_servicio)
+ */
+export async function updateRemisStatus(remisId: string, status: 'disponible' | 'en_viaje' | 'fuera_de_servicio'): Promise<void> {
+  try {
+    const remisRef = doc(db, REMISES_COLLECTION, remisId);
+    await updateDoc(remisRef, { status });
+  } catch (error) {
+    console.error('Error updating remis status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete Remis driver from Firestore
+ */
+export async function deleteRemisFromFirestore(remisId: string): Promise<void> {
+  try {
+    const remisRef = doc(db, REMISES_COLLECTION, remisId);
+    await deleteDoc(remisRef);
+  } catch (error) {
+    console.error('Error deleting remis driver:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Ride Requests
+ */
+export function subscribeRideRequests(onData: (requests: RideRequest[]) => void): () => void {
+  const requestsRef = collection(db, RIDE_REQUESTS_COLLECTION);
+
+  const unsubscribe = onSnapshot(
+    requestsRef,
+    (snapshot) => {
+      const list: RideRequest[] = snapshot.docs.map((doc) => doc.data() as RideRequest);
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      onData(list);
+    },
+    (error) => {
+      console.error('Error in ride requests listener:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update Ride Request
+ */
+export async function saveRideRequestToFirestore(request: RideRequest): Promise<void> {
+  try {
+    const cleanRequest = sanitizeForFirestore(request);
+    const ref = doc(db, RIDE_REQUESTS_COLLECTION, cleanRequest.id);
+    await setDoc(ref, cleanRequest, { merge: true });
+  } catch (error) {
+    console.error('Error saving ride request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update Ride Request Status
+ */
+export async function updateRideRequestStatus(requestId: string, status: RideRequest['status']): Promise<void> {
+  try {
+    const ref = doc(db, RIDE_REQUESTS_COLLECTION, requestId);
+    await updateDoc(ref, { status });
+  } catch (error) {
+    console.error('Error updating ride request status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete Ride Request from Firestore
+ */
+export async function deleteRideRequestFromFirestore(requestId: string): Promise<void> {
+  try {
+    const ref = doc(db, RIDE_REQUESTS_COLLECTION, requestId);
+    await deleteDoc(ref);
+  } catch (error) {
+    console.error('Error deleting ride request:', error);
     throw error;
   }
 }
@@ -433,6 +557,8 @@ export async function clearAllFirestoreData(): Promise<void> {
     await clearCollection(BOOKINGS_COLLECTION);
     await clearCollection(BANNERS_COLLECTION);
     await clearCollection(SHOPS_COLLECTION);
+    await clearCollection(REMISES_COLLECTION);
+    await clearCollection(RIDE_REQUESTS_COLLECTION);
 
     // Reset app config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
@@ -448,7 +574,7 @@ export async function clearAllFirestoreData(): Promise<void> {
 }
 
 /**
- * Reset data to factory defaults (Reload initial mock workers, initial banners, initial shops, clear bookings)
+ * Reset data to factory defaults (Reload initial mock workers, initial banners, initial shops, initial remises)
  */
 export async function resetFirestoreToDefaults(): Promise<void> {
   try {
@@ -456,6 +582,8 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     await clearCollection(BOOKINGS_COLLECTION);
     await clearCollection(BANNERS_COLLECTION);
     await clearCollection(SHOPS_COLLECTION);
+    await clearCollection(REMISES_COLLECTION);
+    await clearCollection(RIDE_REQUESTS_COLLECTION);
 
     // Seed workers
     const workerPromises = INITIAL_WORKERS.map((w) => setDoc(doc(db, WORKERS_COLLECTION, w.id), sanitizeForFirestore(w)));
@@ -468,6 +596,10 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     // Seed shops
     const shopPromises = INITIAL_SHOPS.map((s) => setDoc(doc(db, SHOPS_COLLECTION, s.id), sanitizeForFirestore(s)));
     await Promise.all(shopPromises);
+
+    // Seed remises
+    const remisPromises = INITIAL_REMISES.map((r) => setDoc(doc(db, REMISES_COLLECTION, r.id), sanitizeForFirestore(r)));
+    await Promise.all(remisPromises);
 
     // Reset config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');

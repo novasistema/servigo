@@ -1,4 +1,4 @@
-import { Worker, HardwareProduct, Shop } from '../types';
+import { Worker, HardwareProduct, Shop, RemisDriver } from '../types';
 
 export const INITIAL_WORKERS: Worker[] = [
   {
@@ -381,7 +381,7 @@ export const INITIAL_SHOPS: Shop[] = [
     name: 'Ferretería Central Bruzzone',
     category: 'ferreteria',
     categoryTitle: 'Ferretería & Materiales',
-    description: 'Sponsor Oficial ServiLibre. Venta de artículos de ferretería, herramientas, sanitarios, electricidad, pintura y plomería. Atendido por sus dueños con asesoramiento profesional.',
+    description: 'Sponsor Oficial ServiGo. Venta de artículos de ferretería, herramientas, sanitarios, electricidad, pintura y plomería. Atendido por sus dueños con asesoramiento profesional.',
     address: 'Av. San Martín 450, Centro',
     location: 'Alejandro Roca',
     zones: ['Alejandro Roca', 'Río Cuarto', 'La Carlota', 'San Isidro', 'Vicente López', 'Tigre'],
@@ -393,7 +393,7 @@ export const INITIAL_SHOPS: Shop[] = [
     reviewCount: 94,
     verified: true,
     discountPartner: true,
-    discountText: '10% OFF en insumos al presentar tu perfil de cliente/prestador ServiLibre',
+    discountText: '10% OFF en insumos al presentar tu perfil de cliente/prestador ServiGo',
     imageUrl: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=800',
     featured: true,
     servicesOrProducts: [
@@ -502,7 +502,7 @@ export const INITIAL_SHOPS: Shop[] = [
     reviewCount: 51,
     verified: true,
     discountPartner: true,
-    discountText: '10% OFF en efectivo para Electricistas Matriculados ServiLibre',
+    discountText: '10% OFF en efectivo para Electricistas Matriculados ServiGo',
     imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&q=80&w=800',
     featured: false,
     servicesOrProducts: [
@@ -539,5 +539,128 @@ export const INITIAL_SHOPS: Shop[] = [
       'Hierros conformados y mallas para losas'
     ],
     mapUrl: 'https://maps.google.com/?q=Alejandro+Roca+Cordoba'
+  }
+];
+
+export const INITIAL_REMISES: RemisDriver[] = [
+  {
+    id: 'remis-1',
+    name: 'Carlos "El Chino" Benítez',
+    phone: '+54 9 358 412-3388',
+    whatsapp: '5493584123388',
+    vehicle: {
+      make: 'Toyota',
+      model: 'Corolla XEI',
+      year: '2022',
+      color: 'Gris Plata',
+      plate: 'AF 342 LK'
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
+    baseLocation: 'Alejandro Roca',
+    zones: ['Alejandro Roca', 'Río Cuarto', 'La Carlota', 'Los Cisnes', 'Zona Rural'],
+    status: 'disponible',
+    baseRate: 1500,
+    pricePerKm: 750,
+    acceptsPets: true,
+    hasAirConditioning: true,
+    largeTrunk: true,
+    rating: 4.9,
+    totalTrips: 340,
+    verified: true,
+    coordinates: {
+      lat: -33.3534,
+      lng: -63.7176
+    },
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'remis-2',
+    name: 'Marcelo Fernández',
+    phone: '+54 9 358 599-2210',
+    whatsapp: '5493585992210',
+    vehicle: {
+      make: 'Chevrolet',
+      model: 'Cruze LT',
+      year: '2021',
+      color: 'Blanco Summit',
+      plate: 'AE 981 OP'
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
+    baseLocation: 'Alejandro Roca',
+    zones: ['Alejandro Roca', 'General Deheza', 'General Cabrera', 'Río Cuarto'],
+    status: 'disponible',
+    baseRate: 1600,
+    pricePerKm: 800,
+    acceptsPets: false,
+    hasAirConditioning: true,
+    largeTrunk: true,
+    rating: 4.8,
+    totalTrips: 215,
+    verified: true,
+    coordinates: {
+      lat: -33.3510,
+      lng: -63.7210
+    },
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'remis-3',
+    name: 'Gustavo Rossi',
+    phone: '+54 9 358 488-9011',
+    whatsapp: '5493584889011',
+    vehicle: {
+      make: 'Volkswagen',
+      model: 'Suran Highline',
+      year: '2019',
+      color: 'Negro Profundo',
+      plate: 'AD 512 RT'
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
+    baseLocation: 'Río Cuarto',
+    zones: ['Río Cuarto', 'Alejandro Roca', 'Sampacho', 'Reducción'],
+    status: 'en_viaje',
+    baseRate: 1500,
+    pricePerKm: 780,
+    acceptsPets: true,
+    hasAirConditioning: true,
+    largeTrunk: true,
+    rating: 4.95,
+    totalTrips: 512,
+    verified: true,
+    coordinates: {
+      lat: -33.1232,
+      lng: -64.3492
+    },
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'remis-4',
+    name: 'Valeria & Daniel (Remis Familiar)',
+    phone: '+54 9 358 430-1144',
+    whatsapp: '5493584301144',
+    vehicle: {
+      make: 'Renault',
+      model: 'Logan Intens',
+      year: '2023',
+      color: 'Gris Cometa',
+      plate: 'AG 102 WX'
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300',
+    baseLocation: 'La Carlota',
+    zones: ['La Carlota', 'Alejandro Roca', 'Los Cisnes', 'Ucacha', 'Canals'],
+    status: 'disponible',
+    baseRate: 1400,
+    pricePerKm: 720,
+    acceptsPets: true,
+    hasAirConditioning: true,
+    largeTrunk: true,
+    rating: 5.0,
+    totalTrips: 189,
+    verified: true,
+    coordinates: {
+      lat: -33.4215,
+      lng: -63.2980
+    },
+    createdAt: new Date().toISOString()
   }
 ];

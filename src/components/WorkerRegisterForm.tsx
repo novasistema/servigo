@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Wrench,
   User,
@@ -23,7 +23,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Worker, TradeCategory, CustomTradeOption } from '../types';
-import { formatZoneName } from '../lib/zoneUtils';
+import { formatZoneName, getMergedLocalities } from '../lib/zoneUtils';
 
 interface WorkerRegisterFormProps {
   onRegisterSuccess: (newWorker: Worker) => void;
@@ -81,11 +81,12 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
       setIsSavingNewTrade(false);
     }
   };
+  const argentineLocalities = useMemo(() => getMergedLocalities(), []);
   const [matricula, setMatricula] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [location, setLocation] = useState('San Isidro');
-  const [zonesInput, setZonesInput] = useState('San Isidro, Martínez, Tigre, Vicente López');
+  const [location, setLocation] = useState('Alejandro Roca');
+  const [zonesInput, setZonesInput] = useState('Alejandro Roca, Río Cuarto, La Carlota, Los Cisnes');
   const [hourlyRate, setHourlyRate] = useState<number>(18000);
   const [visitFee, setVisitFee] = useState<number>(12000);
   const [days, setDays] = useState<string[]>([
@@ -579,14 +580,18 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Localidad Principal / Barrio *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Ej. San Isidro"
-                  className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:border-orange-500"
-                />
+                  className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                >
+                  {argentineLocalities.map((loc) => (
+                    <option key={loc} value={loc}>
+                      📍 {loc}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
