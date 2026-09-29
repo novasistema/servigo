@@ -748,18 +748,22 @@ export default function App() {
           await deleteBannerFromFirestore(bannerId);
         }}
         workers={workers}
+        onAddNewTrade={handleAddNewTrade}
         onSaveWorker={async (updatedWorker) => {
           const formattedWorker: Worker = {
             ...updatedWorker,
             location: formatZoneName(updatedWorker.location),
             zones: extractUniqueZones(updatedWorker.zones || []),
           };
-          setWorkers((prev) =>
-            prev.map((w) => (w.id === formattedWorker.id ? formattedWorker : w))
-          );
+          setWorkers((prev) => {
+            const exists = prev.some((w) => w.id === formattedWorker.id);
+            return exists
+              ? prev.map((w) => (w.id === formattedWorker.id ? formattedWorker : w))
+              : [formattedWorker, ...prev];
+          });
           try {
             await saveWorkerToFirestore(formattedWorker);
-            showToast(`¡Perfil de ${formattedWorker.name} actualizado en Firestore!`);
+            showToast(`¡Perfil de ${formattedWorker.name} guardado correctamente!`);
           } catch (err) {
             console.error('Failed to update worker in Firestore:', err);
             showToast('❌ Error al actualizar trabajador.');

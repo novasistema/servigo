@@ -156,11 +156,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         {/* Trade Category Badges */}
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-          {allTradeOptions.map((trade) => {
+          {allTradeOptions.map((trade, idx) => {
             const isSelected = selectedTrade === trade.id;
             return (
               <button
-                key={trade.id}
+                key={`${trade.id}-${idx}`}
                 onClick={() => setSelectedTrade(trade.id)}
                 className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border transition-all ${
                   isSelected

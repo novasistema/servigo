@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Worker, TradeCategory, CustomTradeOption } from '../types';
 import { formatZoneName, getMergedLocalities } from '../lib/zoneUtils';
+import { getAllTradeOptions, slugifyTradeName } from '../lib/tradeUtils';
 
 interface WorkerRegisterFormProps {
   onRegisterSuccess: (newWorker: Worker) => void;
@@ -56,7 +57,7 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
     try {
       setIsSavingNewTrade(true);
       const cleanName = newTradeLabel.trim();
-      const slugId = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `rubro_${Date.now()}`;
+      const slugId = slugifyTradeName(cleanName) || `rubro_${Date.now()}`;
       
       const newCustomOption: CustomTradeOption = {
         id: slugId,
@@ -81,6 +82,7 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
       setIsSavingNewTrade(false);
     }
   };
+  const tradeOptions = useMemo(() => getAllTradeOptions(customTrades), [customTrades]);
   const argentineLocalities = useMemo(() => getMergedLocalities(), []);
   const [matricula, setMatricula] = useState('');
   const [phone, setPhone] = useState('');
@@ -409,42 +411,21 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                         setIsCreatingCustomTrade(true);
                       } else {
                         setIsCreatingCustomTrade(false);
-                        setTrade(e.target.value as TradeCategory);
+                        const selectedVal = e.target.value as TradeCategory;
+                        setTrade(selectedVal);
+                        const matched = tradeOptions.find((t) => t.id === selectedVal);
+                        if (!tradeTitle || tradeOptions.some((t) => t.defaultTitle === tradeTitle)) {
+                          setTradeTitle(matched?.defaultTitle || matched?.label || '');
+                        }
                       }
                     }}
                     className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 font-medium focus:outline-none focus:border-orange-500 cursor-pointer"
                   >
-                    <option value="gasista">🔥 Gasista Matriculado</option>
-                    <option value="electricista">⚡ Electricista</option>
-                    <option value="plomero">🚰 Plomero / Sanitarista</option>
-                    <option value="pintor">🎨 Pintor</option>
-                    <option value="cerrajero">🔑 Cerrajero 24hs</option>
-                    <option value="aire_acondicionado">❄️ Aire Acondicionado / Refrigeración</option>
-                    <option value="albanil">🧱 Albañil / Obras</option>
-                    <option value="jardineria">🌿 Jardines y Poda</option>
-                    <option value="carpinteria">🪚 Carpintería</option>
-                    <option value="fletes">🚚 Fletes y Mudanzas</option>
-                    {customTrades
-                      .filter(
-                        (ct) =>
-                          ![
-                            'gasista',
-                            'electricista',
-                            'plomero',
-                            'pintor',
-                            'cerrajero',
-                            'aire_acondicionado',
-                            'albanil',
-                            'jardineria',
-                            'carpinteria',
-                            'fletes',
-                          ].includes(ct.id)
-                      )
-                      .map((ct, idx) => (
-                        <option key={`${ct.id}-${idx}`} value={ct.id}>
-                          {ct.icon || '🛠️'} {ct.label}
-                        </option>
-                      ))}
+                    {tradeOptions.map((opt, idx) => (
+                      <option key={`${opt.id}-${idx}`} value={opt.id}>
+                        {opt.icon} {opt.label}
+                      </option>
+                    ))}
                     <option value="CREATE_NEW">➕ ¿No está tu rubro? Crear nuevo rubro...</option>
                   </select>
                 </div>

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver } from '../types';
+import React, { useState, useMemo } from 'react';
+import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver, CustomTradeOption } from '../types';
 import { getMergedLocalities } from '../lib/zoneUtils';
+import { getAllTradeOptions, slugifyTradeName, BASE_TRADES } from '../lib/tradeUtils';
 import {
   X,
   Lock,
@@ -38,6 +39,7 @@ import {
   ShieldCheck,
   Briefcase,
   UserX,
+  UserPlus,
   Car,
 } from 'lucide-react';
 
@@ -56,6 +58,7 @@ interface AdminPanelModalProps {
   workers: Worker[];
   onSaveWorker?: (worker: Worker) => Promise<void>;
   onDeleteWorker: (workerId: string) => Promise<void>;
+  onAddNewTrade?: (newTrade: CustomTradeOption) => Promise<void>;
   shops?: Shop[];
   onSaveShop?: (shop: Shop) => Promise<void>;
   onDeleteShop?: (shopId: string) => Promise<void>;
@@ -82,6 +85,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   workers,
   onSaveWorker,
   onDeleteWorker,
+  onAddNewTrade,
   shops = [],
   onSaveShop,
   onDeleteShop,
@@ -120,6 +124,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [isDeletingWorker, setIsDeletingWorker] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [isSavingWorker, setIsSavingWorker] = useState(false);
+  const [isCreatingNewWorker, setIsCreatingNewWorker] = useState(false);
+  const [isCreatingTradeInWorkerModal, setIsCreatingTradeInWorkerModal] = useState(false);
+  const [newTradeNameInput, setNewTradeNameInput] = useState('');
+  const [newTradeIconInput, setNewTradeIconInput] = useState('🛠️');
+  const [isSavingNewTrade, setIsSavingNewTrade] = useState(false);
+
+  // Available Trade Options (Base + Custom + Active Workers)
+  const allTradeOptions = useMemo(() => {
+    return getAllTradeOptions(appConfig?.customTrades || [], workers);
+  }, [appConfig?.customTrades, workers]);
+
   const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [isSavingShop, setIsSavingShop] = useState(false);
 
@@ -201,6 +216,117 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       pricePaid: 10000,
       expirationDate: defaultDateStr,
     });
+  };
+
+  const handleStartNewWorker = () => {
+    setIsCreatingNewWorker(true);
+    setIsCreatingTradeInWorkerModal(false);
+    const defaultTrade = allTradeOptions[0] || { id: 'gasista', defaultTitle: 'Gasista Matriculado', label: 'Gasista' };
+    setEditingWorker({
+      id: `worker-${Date.now()}`,
+      name: '',
+      trade: defaultTrade.id,
+      tradeTitle: defaultTrade.defaultTitle || defaultTrade.label || '',
+      matricula: '',
+      phone: '',
+      whatsapp: '',
+      location: 'Alejandro Roca',
+      zones: ['Alejandro Roca'],
+      rating: 5.0,
+      reviewCount: 1,
+      completedJobs: 0,
+      verified: true,
+      ferreteroPartner: false,
+      hourlyRate: 18000,
+      visitFee: 12000,
+      availability: {
+        days: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+        hours: '08:00 - 18:00',
+        urgencies24h: false,
+      },
+      bio: '',
+      services: [],
+      gallery: [],
+      reviews: [],
+      avatar: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=250',
+    });
+  };
+
+  const handleStartEditWorker = (w: Worker) => {
+    setIsCreatingNewWorker(false);
+    setIsCreatingTradeInWorkerModal(false);
+    setEditingWorker({ ...w });
+  };
+
+  const handleSaveNewTrade = async () => {
+    const trimmed = newTradeNameInput.trim();
+    if (!trimmed) {
+      showToast('Por favor escribe el nombre del nuevo rubro');
+      return;
+    }
+    const slugId = slugifyTradeName(trimmed);
+    if (!slugId) {
+      showToast('El nombre ingresado no es válido');
+      return;
+    }
+
+    const newOption: CustomTradeOption = {
+      id: slugId,
+      label: trimmed,
+      icon: newTradeIconInput.trim() || '🛠️',
+    };
+
+    setIsSavingNewTrade(true);
+    try {
+      if (onAddNewTrade) {
+        await onAddNewTrade(newOption);
+      } else if (onSaveAppConfig && appConfig) {
+        const existing = appConfig.customTrades || [];
+        if (!existing.some((t) => t.id === slugId)) {
+          await onSaveAppConfig({
+            ...appConfig,
+            customTrades: [...existing, newOption],
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      if (editingWorker) {
+        setEditingWorker({
+          ...editingWorker,
+          trade: slugId,
+          tradeTitle: editingWorker.tradeTitle || trimmed,
+        });
+      }
+
+      setNewTradeNameInput('');
+      setNewTradeIconInput('🛠️');
+      setIsCreatingTradeInWorkerModal(false);
+      showToast(`¡Rubro "${trimmed}" creado y asignado con éxito!`);
+    } catch (err) {
+      console.error('Error saving trade:', err);
+      showToast('Error al crear el nuevo rubro');
+    } finally {
+      setIsSavingNewTrade(false);
+    }
+  };
+
+  const handleDeleteCustomTrade = async (tradeId: string) => {
+    if (!appConfig?.customTrades) return;
+    const existsInWorkers = workers.some((w) => w.trade?.toLowerCase() === tradeId.toLowerCase());
+    if (existsInWorkers) {
+      showToast('⚠️ No se puede eliminar: hay trabajadores asignados a este rubro');
+      return;
+    }
+    const updated = appConfig.customTrades.filter((t) => t.id !== tradeId);
+    if (onSaveAppConfig) {
+      await onSaveAppConfig({
+        ...appConfig,
+        customTrades: updated,
+        updatedAt: new Date().toISOString(),
+      });
+      showToast('🗑️ Rubro personalizado eliminado');
+    }
   };
 
   const handleSaveBannerSubmit = async (e: React.FormEvent) => {
@@ -1232,21 +1358,66 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       Gestión de Trabajadores Registrados ({workers.length})
                     </h3>
                     <p className="text-xs text-slate-400 font-medium mt-0.5">
-                      Busca y administra a los prestadores de servicio. Puedes eliminar perfiles obsoletos o falsos de Firestore.
+                      Busca y administra a los prestadores de servicio. Carga nuevos perfiles o edita sus rubros de forma organizada.
                     </p>
                   </div>
 
-                  {/* Search input */}
-                  <div className="relative w-full sm:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                      type="text"
-                      value={workerSearchTerm}
-                      onChange={(e) => setWorkerSearchTerm(e.target.value)}
-                      placeholder="Buscar por nombre, oficio o teléfono..."
-                      className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Search input */}
+                    <div className="relative w-full sm:w-60">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        value={workerSearchTerm}
+                        onChange={(e) => setWorkerSearchTerm(e.target.value)}
+                        placeholder="Buscar por nombre, oficio o teléfono..."
+                        className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    {/* Cargar Nuevo Trabajador Button */}
+                    <button
+                      type="button"
+                      onClick={handleStartNewWorker}
+                      className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>+ Cargar Nuevo</span>
+                    </button>
                   </div>
+                </div>
+
+                {/* Rubros activos summary bar */}
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-3 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+                    <Briefcase className="w-3.5 h-3.5 text-amber-400" /> Rubros organizados ({allTradeOptions.length}):
+                  </span>
+                  {allTradeOptions.map((t) => {
+                    const count = workers.filter((w) => w.trade?.toLowerCase() === t.id.toLowerCase()).length;
+                    const isCustom = !BASE_TRADES.some((bt) => bt.id.toLowerCase() === t.id.toLowerCase());
+                    return (
+                      <span
+                        key={t.id}
+                        className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-200"
+                      >
+                        <span>{t.icon}</span>
+                        <span className="font-semibold">{t.label}</span>
+                        <span className="text-[10px] text-amber-400 font-mono font-bold bg-amber-500/10 px-1.5 py-0.5 rounded">
+                          {count}
+                        </span>
+                        {isCustom && count === 0 && (
+                          <button
+                            type="button"
+                            title="Eliminar rubro personalizado sin trabajadores"
+                            onClick={() => handleDeleteCustomTrade(t.id)}
+                            className="text-slate-500 hover:text-rose-400 ml-1"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
 
                 {filteredWorkers.length === 0 ? (
@@ -1312,7 +1483,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center gap-1.5">
                             <button
-                              onClick={() => setEditingWorker(w)}
+                              onClick={() => handleStartEditWorker(w)}
                               className="py-1.5 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -1952,8 +2123,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 space-y-5 text-white shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-amber-400" />
-                Editar Perfil de Trabajador: {editingWorker.name}
+                {isCreatingNewWorker ? <UserPlus className="w-5 h-5 text-amber-400" /> : <Edit2 className="w-5 h-5 text-amber-400" />}
+                {isCreatingNewWorker
+                  ? 'Cargar Nuevo Perfil de Trabajador'
+                  : `Editar Perfil de Trabajador: ${editingWorker.name || 'Sin nombre'}`}
               </h3>
               <button
                 type="button"
@@ -1972,20 +2145,143 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   type="text"
                   value={editingWorker.name}
                   onChange={(e) => setEditingWorker({ ...editingWorker, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Ej: Fabricio Ivan Bosio"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium"
                 />
               </div>
 
-              {/* Trade */}
+              {/* Trade Selection (Organized Rubros with Creation Option) */}
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Rubro Principal *</label>
-                <input
-                  type="text"
-                  value={editingWorker.trade}
-                  onChange={(e) => setEditingWorker({ ...editingWorker, trade: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-300">Rubro Principal *</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingTradeInWorkerModal((prev) => !prev)}
+                    className="text-amber-400 hover:text-amber-300 font-bold text-[11px] flex items-center gap-1 hover:underline transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isCreatingTradeInWorkerModal ? 'Ver Lista' : '+ Crear Nuevo Rubro'}</span>
+                  </button>
+                </div>
+                <select
+                  value={isCreatingTradeInWorkerModal ? '__CREATE_NEW__' : editingWorker.trade}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__CREATE_NEW__') {
+                      setIsCreatingTradeInWorkerModal(true);
+                    } else {
+                      setIsCreatingTradeInWorkerModal(false);
+                      const matched = allTradeOptions.find((t) => t.id === val);
+                      setEditingWorker({
+                        ...editingWorker,
+                        trade: val,
+                        tradeTitle:
+                          !editingWorker.tradeTitle ||
+                          allTradeOptions.some((t) => t.defaultTitle === editingWorker.tradeTitle)
+                            ? matched?.defaultTitle || matched?.label || editingWorker.tradeTitle
+                            : editingWorker.tradeTitle,
+                      });
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 font-medium cursor-pointer"
+                >
+                  {allTradeOptions.map((t, idx) => (
+                    <option key={`${t.id}-${idx}`} value={t.id}>
+                      {t.icon} {t.label}
+                    </option>
+                  ))}
+                  <option value="__CREATE_NEW__">➕ ¿No está en la lista? Crear nuevo rubro...</option>
+                </select>
               </div>
+
+              {/* Inline Custom Trade Creator Card */}
+              {isCreatingTradeInWorkerModal && (
+                <div className="sm:col-span-2 p-3.5 bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl space-y-3 animate-fadeIn shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>Crear Nuevo Rubro / Oficio Organizado</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingTradeInWorkerModal(false)}
+                      className="text-slate-400 hover:text-white p-1 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 leading-tight">
+                    Este nuevo rubro quedará registrado en el sistema para que todos los trabajadores puedan organizarse bajo esta categoría.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        Nombre del Nuevo Rubro *
+                      </label>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={newTradeNameInput}
+                        onChange={(e) => setNewTradeNameInput(e.target.value)}
+                        placeholder="Ej: Herrería, Fumigaciones, Marmolería..."
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        Icono / Emoji
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={newTradeIconInput}
+                          onChange={(e) => setNewTradeIconInput(e.target.value)}
+                          className="w-9 text-center py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-base text-white"
+                          maxLength={2}
+                        />
+                        <div className="flex flex-wrap gap-1">
+                          {['🛠️', '⚙️', '🔨', '🧰', '🛋️', '💻', '🧹', '🚗', '🛡️', '📦', '🏠', '🔒', '📱', '📹'].slice(0, 7).map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => setNewTradeIconInput(emoji)}
+                              className={`w-7 h-7 text-xs rounded-lg flex items-center justify-center transition-transform ${
+                                newTradeIconInput === emoji
+                                  ? 'bg-amber-500 text-slate-950 font-bold scale-110 shadow-sm'
+                                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-500/20">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingTradeInWorkerModal(false)}
+                      className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingNewTrade || !newTradeNameInput.trim()}
+                      onClick={handleSaveNewTrade}
+                      className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                    >
+                      {isSavingNewTrade ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      <span>Guardar y Asignar Rubro</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Trade Title */}
               <div>
@@ -2189,7 +2485,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 disabled={isSavingWorker}
                 onClick={async () => {
                   if (!editingWorker.name.trim()) {
-                    showToast('El nombre no puede estar vacío');
+                    showToast('El nombre del trabajador no puede estar vacío');
+                    return;
+                  }
+                  if (!editingWorker.trade || editingWorker.trade === '__CREATE_NEW__') {
+                    showToast('Por favor selecciona o crea un rubro válido');
                     return;
                   }
                   try {
@@ -2198,7 +2498,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       await onSaveWorker(editingWorker);
                     }
                     setEditingWorker(null);
-                    showToast(`¡Perfil de "${editingWorker.name}" guardado correctamente!`);
+                    showToast(
+                      isCreatingNewWorker
+                        ? `¡Trabajador "${editingWorker.name}" registrado correctamente!`
+                        : `¡Perfil de "${editingWorker.name}" guardado correctamente!`
+                    );
                   } catch (err) {
                     console.error(err);
                     showToast('❌ Error al guardar los datos del trabajador.');
@@ -2209,7 +2513,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95"
               >
                 {isSavingWorker ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Guardar Cambios del Trabajador</span>
+                <span>{isCreatingNewWorker ? 'Guardar y Publicar Trabajador' : 'Guardar Cambios del Trabajador'}</span>
               </button>
             </div>
           </div>
@@ -2254,6 +2558,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <label className="block font-bold text-slate-300 mb-1">Rubro / Categoría *</label>
                 <input
                   type="text"
+                  list="shop-categories-list"
                   value={editingShop.categoryTitle || editingShop.category}
                   onChange={(e) =>
                     setEditingShop({
@@ -2265,6 +2570,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   placeholder="Ej: Ferretería & Materiales"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-orange-500 font-medium"
                 />
+                <datalist id="shop-categories-list">
+                  <option value="Ferretería & Herramientas" />
+                  <option value="Taller Mecánico & Autos" />
+                  <option value="Sanitarios, Plomería & Gas" />
+                  <option value="Electricidad & Iluminación" />
+                  <option value="Corralón & Materiales" />
+                  <option value="Pinturería & Revestimientos" />
+                  <option value="Repuestos & Accesorios" />
+                  <option value="Servicios Técnicos & Reparaciones" />
+                </datalist>
               </div>
 
               {/* Dirección */}
