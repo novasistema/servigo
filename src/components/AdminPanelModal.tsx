@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver, CustomTradeOption } from '../types';
+import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver, CustomTradeOption, SystemCoupon, IssuedVoucher, RentalBooking, RentalPayoutRequest, RentalItem, RentalOwner } from '../types';
 import { getMergedLocalities } from '../lib/zoneUtils';
 import { getAllTradeOptions, slugifyTradeName, BASE_TRADES } from '../lib/tradeUtils';
 import {
@@ -41,6 +41,12 @@ import {
   UserX,
   UserPlus,
   Car,
+  Ticket,
+  Wallet,
+  ArrowDownToLine,
+  HandCoins,
+  Package,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AdminPanelModalProps {
@@ -65,6 +71,17 @@ interface AdminPanelModalProps {
   remises?: RemisDriver[];
   onSaveRemis?: (remis: RemisDriver) => Promise<void>;
   onDeleteRemis?: (remisId: string) => Promise<void>;
+  coupons?: SystemCoupon[];
+  onSaveCoupon?: (coupon: SystemCoupon) => Promise<void>;
+  onDeleteCoupon?: (couponId: string) => Promise<void>;
+  issuedVouchers?: IssuedVoucher[];
+  onSaveIssuedVoucher?: (voucher: IssuedVoucher) => Promise<void>;
+  rentalBookings?: RentalBooking[];
+  rentalPayouts?: RentalPayoutRequest[];
+  rentalItems?: RentalItem[];
+  rentalOwners?: RentalOwner[];
+  onUpdatePayoutStatus?: (payoutId: string, status: 'procesando' | 'transferido' | 'rechazado') => Promise<void>;
+  onConfirmRentalReturn?: (bookingId: string) => Promise<void>;
   onClearAllData?: () => Promise<void>;
   onResetToDefaults?: () => Promise<void>;
   showToast: (msg: string) => void;
@@ -92,13 +109,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   remises = [],
   onSaveRemis,
   onDeleteRemis,
+  coupons = [],
+  onSaveCoupon,
+  onDeleteCoupon,
+  issuedVouchers = [],
+  onSaveIssuedVoucher,
+  rentalBookings = [],
+  rentalPayouts = [],
+  rentalItems = [],
+  rentalOwners = [],
+  onUpdatePayoutStatus,
+  onConfirmRentalReturn,
   onClearAllData,
   onResetToDefaults,
   showToast,
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'reset'>('tabs');
+  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'reset'>('tabs');
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
   // Custom Logo and Branding states
@@ -144,6 +172,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [isDeletingRemis, setIsDeletingRemis] = useState(false);
   const [editingRemis, setEditingRemis] = useState<RemisDriver | null>(null);
   const [isSavingRemis, setIsSavingRemis] = useState(false);
+
+  // Coupon & Voucher Management States
+  const [editingCoupon, setEditingCoupon] = useState<Partial<SystemCoupon> | null>(null);
+  const [isSavingCoupon, setIsSavingCoupon] = useState(false);
+  const [couponSearchTerm, setCouponSearchTerm] = useState('');
+  const [voucherSearchTerm, setVoucherSearchTerm] = useState('');
 
   // Reset Confirmation States
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
@@ -329,6 +363,67 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  const handleStartNewCoupon = () => {
+    setEditingCoupon({
+      id: `coupon-${Date.now()}`,
+      codePrefix: 'DESC15',
+      title: '',
+      discountType: 'percentage',
+      discountValue: 15,
+      targetType: 'all_shops',
+      targetShopName: 'Comercios y Talleres Adheridos',
+      minSpend: 0,
+      description: 'Beneficio exclusivo por contratar profesionales verificados en ServiGo.',
+      termsAndConditions: 'Presentar el código del cupón oficial en caja al momento de abonar en el comercio.',
+      active: true,
+      validDays: 30,
+      createdAt: new Date().toISOString(),
+    });
+  };
+
+  const handleSaveCouponSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCoupon || !editingCoupon.title || !editingCoupon.codePrefix) {
+      showToast('Por favor completa el título y el código del cupón');
+      return;
+    }
+    setIsSavingCoupon(true);
+    try {
+      if (onSaveCoupon) {
+        await onSaveCoupon(editingCoupon as SystemCoupon);
+      }
+      setEditingCoupon(null);
+      showToast(`¡Cupón "${editingCoupon.title}" guardado!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar el cupón');
+    } finally {
+      setIsSavingCoupon(false);
+    }
+  };
+
+  const handleDeleteCouponConfirm = async (couponId: string) => {
+    if (confirm('¿Eliminar este cupón de beneficio?')) {
+      try {
+        if (onDeleteCoupon) {
+          await onDeleteCoupon(couponId);
+        }
+        showToast('Cupón eliminado correctamente');
+      } catch (err) {
+        console.error(err);
+        showToast('Error al eliminar cupón');
+      }
+    }
+  };
+
+  const handleToggleCouponActive = async (c: SystemCoupon) => {
+    if (onSaveCoupon) {
+      const updated = { ...c, active: !c.active };
+      await onSaveCoupon(updated);
+      showToast(`Cupón "${c.title}" ${updated.active ? 'activado' : 'desactivado'}`);
+    }
+  };
+
   const handleSaveBannerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBanner || !editingBanner.title || !editingBanner.linkUrl) {
@@ -507,7 +602,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           /* AUTHENTICATED PANEL BODY */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Tab Navigation Switches */}
-            <div className="grid grid-cols-2 sm:grid-cols-7 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setActiveTab('tabs')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
@@ -533,6 +628,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
 
               <button
+                onClick={() => setActiveTab('coupons')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'coupons'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                <span>3. Cupones ({coupons.length})</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('subscriptions')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'subscriptions'
@@ -541,7 +648,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>3. Pagos</span>
+                <span>4. Pagos</span>
                 {(pendingPaymentsCount > 0 || expiredPaymentsCount > 0) && (
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                 )}
@@ -556,7 +663,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>4. Perfiles ({workers.length})</span>
+                <span>5. Perfiles ({workers.length})</span>
               </button>
 
               <button
@@ -568,7 +675,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <Store className="w-3.5 h-3.5" />
-                <span>5. Comercios ({shops.length})</span>
+                <span>6. Comercios ({shops.length})</span>
               </button>
 
               <button
@@ -580,7 +687,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <Car className="w-3.5 h-3.5 text-amber-500" />
-                <span>6. Remises ({remises.length})</span>
+                <span>7. Remises ({remises.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('rentals_wallet')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'rentals_wallet'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                    : 'text-emerald-400 hover:text-emerald-300'
+                }`}
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>8. Billetera Alquileres ({rentalBookings.length})</span>
+                {rentalPayouts.some((p) => p.status === 'pendiente') && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
               </button>
 
               <button
@@ -592,7 +714,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>7. Borrar</span>
+                <span>9. Borrar</span>
               </button>
             </div>
 
@@ -731,6 +853,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   {[
                     { key: 'search', label: '🔍 Buscar Oficios (Index / Catálogo)', desc: 'Vista principal con el buscador de profesionales' },
                     { key: 'shops', label: '🏪 Comercios & Negocios (Ferreterías, Talleres, Corralones)', desc: 'Guía comercial de la zona con mapa, WhatsApp y descuentos' },
+                    { key: 'jobs', label: '💼 Bolsa de Trabajo (RRHH & Currículums Vitae)', desc: 'Módulo de publicación y búsqueda de CVs clasificados por oficio con Asistente IA' },
+                    { key: 'delivery', label: '🛵 ServiGo Delivery (Envíos & Pedidos)', desc: 'Recepción de pedidos en tiempo real para comercios y flujo de compra para clientes' },
                     { key: 'remises', label: '🚕 Remises & Viajes', desc: 'Red de remiseros con mapa interactivo en vivo y pedidos directos' },
                     { key: 'register', label: '👷 Soy Trabajador (Publicar Perfil)', desc: 'Formulario de registro para nuevos prestadores' },
                     { key: 'sponsor', label: '🏬 Ferretería Bruzzone (Tienda Oficial)', desc: 'Espacio patrocinado con catálogo de materiales' },
@@ -1134,6 +1258,448 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
                       );
                     })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CUPONES DE BENEFICIO CREADOS POR EL ADMINISTRADOR */}
+            {activeTab === 'coupons' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Top header bar */}
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <Ticket className="w-4 h-4 text-amber-400" />
+                      Cupones de Beneficio del Sistema ({coupons.length})
+                    </h3>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">
+                      Crea cupones con descuentos para que los trabajadores entreguen a sus clientes. Válidos para usar en Ferretería Bruzzone o comercios adheridos.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleStartNewCoupon}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Crear Nuevo Cupón</span>
+                  </button>
+                </div>
+
+                {/* Metrics Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cupones Creados</span>
+                    <p className="text-xl font-black text-white mt-1">{coupons.length}</p>
+                  </div>
+                  <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cupones Activos</span>
+                    <p className="text-xl font-black text-amber-400 mt-1">
+                      {coupons.filter((c) => c.active).length}
+                    </p>
+                  </div>
+                  <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vouchers Emitidos</span>
+                    <p className="text-xl font-black text-blue-400 mt-1">{issuedVouchers.length}</p>
+                  </div>
+                  <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vouchers Canjeados</span>
+                    <p className="text-xl font-black text-emerald-400 mt-1">
+                      {issuedVouchers.filter((v) => v.status === 'redeemed').length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Coupon Editor Modal/Form */}
+                {editingCoupon && (
+                  <form onSubmit={handleSaveCouponSubmit} className="bg-slate-950 border border-amber-500/40 rounded-3xl p-5 space-y-4 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{editingCoupon.id && coupons.some((c) => c.id === editingCoupon.id) ? 'Editar Cupón de Beneficio' : 'Nuevo Cupón de Beneficio'}</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCoupon(null)}
+                        className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Title */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-slate-300 font-bold mb-1">Título del Cupón *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editingCoupon.title || ''}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, title: e.target.value })}
+                          placeholder="Ej: 15% OFF en Ferretería Bruzzone"
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-medium"
+                        />
+                      </div>
+
+                      {/* Code Prefix */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Prefijo de Código *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editingCoupon.codePrefix || ''}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, codePrefix: e.target.value.toUpperCase() })}
+                          placeholder="Ej: BRUZZONE15, RED10"
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono placeholder-slate-600 focus:outline-none focus:border-amber-500 uppercase"
+                        />
+                      </div>
+
+                      {/* Target Shop */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">¿Dónde se puede canjear? *</label>
+                        <select
+                          value={editingCoupon.targetType || 'all_shops'}
+                          onChange={(e) => {
+                            const val = e.target.value as any;
+                            let targetShopName = 'Comercios y Talleres Adheridos';
+                            if (val === 'ferreteria_bruzzone') targetShopName = 'Ferretería Bruzzone (Sponsor Oficial)';
+                            setEditingCoupon({
+                              ...editingCoupon,
+                              targetType: val,
+                              targetShopName,
+                            });
+                          }}
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="ferreteria_bruzzone">🏬 Ferretería Bruzzone (Sponsor Oficial)</option>
+                          <option value="all_shops">🏪 Todos los Comercios y Talleres Adheridos</option>
+                          <option value="specific_shop">🏢 Un Comercio Específico de la Guía</option>
+                        </select>
+                      </div>
+
+                      {editingCoupon.targetType === 'specific_shop' && (
+                        <div className="sm:col-span-2">
+                          <label className="block text-slate-300 font-bold mb-1">Comercio Específico</label>
+                          <select
+                            value={editingCoupon.targetShopId || ''}
+                            onChange={(e) => {
+                              const shop = shops.find((s) => s.id === e.target.value);
+                              setEditingCoupon({
+                                ...editingCoupon,
+                                targetShopId: e.target.value,
+                                targetShopName: shop ? shop.name : 'Comercio Adherido',
+                              });
+                            }}
+                            className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                          >
+                            <option value="">Selecciona un comercio registrado...</option>
+                            {shops.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} ({s.location})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Discount Type */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Tipo de Descuento</label>
+                        <select
+                          value={editingCoupon.discountType || 'percentage'}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, discountType: e.target.value as any })}
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="percentage">Porcentaje (% OFF)</option>
+                          <option value="fixed">Monto Fijo ($ ARS Descuento)</option>
+                        </select>
+                      </div>
+
+                      {/* Discount Value */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">
+                          Valor {editingCoupon.discountType === 'percentage' ? '(%)' : '($ ARS)'} *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min={1}
+                          value={editingCoupon.discountValue || 10}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, discountValue: Number(e.target.value) || 0 })}
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      {/* Min Spend */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Compra Mínima en Comercio ($ ARS, 0 si no aplica)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={editingCoupon.minSpend || 0}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, minSpend: Number(e.target.value) || 0 })}
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      {/* Validity days */}
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Días de Validez del Cupón emitido</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={editingCoupon.validDays || 30}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, validDays: Number(e.target.value) || 30 })}
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-slate-300 font-bold mb-1">Descripción del Beneficio</label>
+                        <textarea
+                          rows={2}
+                          value={editingCoupon.description || ''}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, description: e.target.value })}
+                          placeholder="Beneficio exclusivo por contratar profesionales verificados en ServiGo."
+                          className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 resize-none"
+                        />
+                      </div>
+
+                      {/* Active Toggle */}
+                      <div className="sm:col-span-2 flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800">
+                        <div>
+                          <p className="font-bold text-white text-xs">Cupón Habilitado para Trabajadores</p>
+                          <p className="text-[11px] text-slate-400">Si está activo, los trabajadores podrán seleccionarlo y entregarlo a clientes.</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editingCoupon.active ?? true}
+                          onChange={(e) => setEditingCoupon({ ...editingCoupon, active: e.target.checked })}
+                          className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setEditingCoupon(null)}
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs font-bold cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingCoupon}
+                        className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                      >
+                        {isSavingCoupon ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        <span>Guardar Cupón de Beneficio</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* System Coupons List */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                    Cupones Habilitados para Entrega ({coupons.length})
+                  </h4>
+
+                  {coupons.length === 0 ? (
+                    <div className="text-center py-8 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+                      <Ticket className="w-8 h-8 text-slate-700 mx-auto" />
+                      <p className="text-xs text-slate-400 font-bold">No hay cupones creados aún.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {coupons.map((c) => (
+                        <div
+                          key={c.id}
+                          className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-black px-2.5 py-1 rounded-xl">
+                                {c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `$${c.discountValue.toLocaleString('es-AR')}`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCouponActive(c)}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                                  c.active
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                                }`}
+                              >
+                                {c.active ? '● Activo' : '○ Pausado'}
+                              </button>
+                            </div>
+
+                            <div>
+                              <h5 className="text-xs font-black text-white">{c.title}</h5>
+                              <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <Store className="w-3 h-3 text-slate-500 shrink-0" />
+                                <span>{c.targetShopName}</span>
+                              </p>
+                              {c.description && (
+                                <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{c.description}</p>
+                              )}
+                            </div>
+
+                            <div className="text-[10px] text-slate-500 flex items-center gap-3 pt-1 border-t border-slate-900">
+                              <span>Prefijo: <strong className="text-slate-300">{c.codePrefix}</strong></span>
+                              <span>Validez: <strong className="text-slate-300">{c.validDays} días</strong></span>
+                              {c.minSpend ? <span>Mín: <strong className="text-slate-300">${c.minSpend.toLocaleString('es-AR')}</strong></span> : null}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-900">
+                            <button
+                              type="button"
+                              onClick={() => setEditingCoupon({ ...c })}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCouponConfirm(c.id)}
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Borrar</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Issued Vouchers Log Table */}
+                <div className="space-y-3 pt-4 border-t border-slate-800">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-black text-white flex items-center gap-2">
+                        <Users className="w-4 h-4 text-amber-400" />
+                        <span>Vouchers y Cupones Entregados a Clientes ({issuedVouchers.length})</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Historial de beneficios generados por trabajadores para sus clientes.
+                      </p>
+                    </div>
+
+                    <div className="relative w-full sm:w-60">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        value={voucherSearchTerm}
+                        onChange={(e) => setVoucherSearchTerm(e.target.value)}
+                        placeholder="Buscar por cliente o código..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  {issuedVouchers.length === 0 ? (
+                    <div className="text-center py-8 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+                      <Ticket className="w-8 h-8 text-slate-700 mx-auto" />
+                      <p className="text-xs text-slate-400 font-bold">Aún no se han emitido cupones a clientes.</p>
+                      <p className="text-[11px] text-slate-500">
+                        Los trabajadores pueden entregarlos desde su perfil al ser contratados.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {issuedVouchers
+                        .filter((v) => {
+                          const s = voucherSearchTerm.toLowerCase();
+                          return (
+                            v.clientName?.toLowerCase().includes(s) ||
+                            v.workerName?.toLowerCase().includes(s) ||
+                            v.voucherCode?.toLowerCase().includes(s) ||
+                            v.couponTitle?.toLowerCase().includes(s)
+                          );
+                        })
+                        .map((v) => (
+                          <div
+                            key={v.id}
+                            className="bg-slate-950 border border-slate-800/80 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                                  {v.voucherCode}
+                                </span>
+                                <span className="font-black text-white">{v.discountText}</span>
+                                <span className="text-slate-400">• {v.targetShopName}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-300">
+                                Cliente: <strong className="text-white">{v.clientName}</strong>
+                                {v.clientPhone ? ` (${v.clientPhone})` : ''} • Entregado por:{' '}
+                                <strong className="text-amber-300">{v.workerName}</strong> ({v.workerTrade})
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                Emitido: {new Date(v.issuedAt).toLocaleDateString('es-AR')} • Vence:{' '}
+                                {new Date(v.expiresAt).toLocaleDateString('es-AR')}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 flex items-center gap-2">
+                              {v.status === 'redeemed' ? (
+                                <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-blue-400" />
+                                  Canjeado en {v.redeemedByShop || 'Comercio'}
+                                </span>
+                              ) : new Date(v.expiresAt).getTime() < Date.now() ? (
+                                <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                  Vencido
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                                  Activo / Vigente
+                                </span>
+                              )}
+
+                              {onSaveIssuedVoucher && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const isRedeemed = v.status === 'redeemed';
+                                    const updated: IssuedVoucher = {
+                                      ...v,
+                                      status: isRedeemed ? 'active' : 'redeemed',
+                                      redeemedAt: isRedeemed ? undefined : new Date().toISOString(),
+                                      redeemedByShop: isRedeemed ? undefined : (v.targetShopName || 'Ferretería Bruzzone'),
+                                    };
+                                    await onSaveIssuedVoucher(updated);
+                                    showToast(
+                                      isRedeemed
+                                        ? `Voucher "${v.voucherCode}" reactivado a estado Vigente.`
+                                        : `¡Voucher "${v.voucherCode}" marcado como CANJEADO!`
+                                    );
+                                  }}
+                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
+                                    v.status === 'redeemed'
+                                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                      : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm'
+                                  }`}
+                                  title={v.status === 'redeemed' ? 'Reactivar voucher' : 'Marcar cupón como canjeado'}
+                                >
+                                  {v.status === 'redeemed' ? '↺ Reactivar' : '✓ Marcar Canjeado'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1856,7 +2422,352 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* TAB 7: REINICIAR Y BORRAR DATOS */}
+            {/* TAB 8: BILLETERA CENTRAL Y COMISIONES DE ALQUILERES (GIVY / MERCADOLIBRE MODEL) */}
+            {activeTab === 'rentals_wallet' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Header Card */}
+                <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-950 p-5 sm:p-6 rounded-3xl border border-emerald-500/30 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+                        <Wallet className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                          Billetera Central ServiGo
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">
+                            Escrow & 10% Comisión
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-300">
+                          Control de pagos en custodia, comisiones retenidas por ServiGo y transferencias a dueños de productos (CBU / Alias).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financial Metrics Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                    <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-emerald-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase">
+                        <span>Comisión ServiGo (10%)</span>
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                      </div>
+                      <p className="text-lg font-black text-emerald-400">
+                        ${rentalBookings.reduce((acc, b) => acc + (b.platformFeeAmount || 0), 0).toLocaleString('es-AR')}
+                      </p>
+                      <p className="text-[10px] text-slate-400">Ganancia neta retenida</p>
+                    </div>
+
+                    <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-blue-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase">
+                        <span>En Custodia (Escrow)</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                      </div>
+                      <p className="text-lg font-black text-blue-400">
+                        ${rentalBookings
+                          .filter((b) => b.paymentStatus === 'pagado_en_custodia' || b.depositStatus === 'en_custodia')
+                          .reduce((acc, b) => {
+                            const rentInCustody = b.paymentStatus === 'pagado_en_custodia' ? b.ownerNetAmount : 0;
+                            const depositInCustody = b.depositStatus === 'en_custodia' ? b.depositAmount : 0;
+                            return acc + rentInCustody + depositInCustody;
+                          }, 0)
+                          .toLocaleString('es-AR')}
+                      </p>
+                      <p className="text-[10px] text-slate-400">Garantías + Alquileres activos</p>
+                    </div>
+
+                    <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-amber-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase">
+                        <span>Retiros Pendientes</span>
+                        <ArrowDownToLine className="w-3.5 h-3.5 text-amber-400" />
+                      </div>
+                      <p className="text-lg font-black text-amber-400">
+                        ${rentalPayouts
+                          .filter((p) => p.status === 'pendiente')
+                          .reduce((acc, p) => acc + p.amount, 0)
+                          .toLocaleString('es-AR')}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {rentalPayouts.filter((p) => p.status === 'pendiente').length} solicitudes pendientes
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase">
+                        <span>Total Facturado</span>
+                        <Package className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                      <p className="text-lg font-black text-white">
+                        ${rentalBookings.reduce((acc, b) => acc + (b.totalPrice || 0), 0).toLocaleString('es-AR')}
+                      </p>
+                      <p className="text-[10px] text-slate-400">{rentalBookings.length} operaciones</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 1: Solicitudes de Retiro de Fondos de Dueños (Payouts) */}
+                <div className="bg-slate-950 p-5 rounded-3xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-sm font-black text-white flex items-center gap-2">
+                        <HandCoins className="w-4 h-4 text-amber-400" />
+                        Solicitudes de Retiro de Fondos a CBU/CVU/Alias
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Los dueños que acumularon saldo por alquileres finalizados solicitan la transferencia a su cuenta bancaria o Mercado Pago.
+                      </p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300">
+                      Total: {rentalPayouts.length}
+                    </span>
+                  </div>
+
+                  {rentalPayouts.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-dashed border-slate-800">
+                      No hay solicitudes de retiro registradas todavía. Cuando los dueños soliciten liquidar su saldo disponible aparecerán aquí.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {rentalPayouts.map((payout) => {
+                        const isPending = payout.status === 'pendiente';
+                        const isTransferred = payout.status === 'transferido';
+
+                        return (
+                          <div
+                            key={payout.id}
+                            className={`p-4 rounded-2xl border transition-all ${
+                              isPending
+                                ? 'bg-amber-950/20 border-amber-500/40'
+                                : isTransferred
+                                ? 'bg-slate-900/60 border-emerald-500/30'
+                                : 'bg-slate-900/40 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-black text-white">{payout.ownerName}</span>
+                                  {payout.ownerDni && (
+                                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
+                                      DNI: {payout.ownerDni}
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                                      isPending
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                                        : isTransferred
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                    }`}
+                                  >
+                                    {payout.status}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
+                                  <span className="font-mono bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-emerald-400 font-bold">
+                                    CBU / Alias: {payout.cbuOrAlias}
+                                  </span>
+                                  <span className="text-slate-400">
+                                    Solicitado: {new Date(payout.requestedAt).toLocaleDateString('es-AR')}
+                                  </span>
+                                  {payout.ownerPhone && (
+                                    <a
+                                      href={`https://wa.me/549${payout.ownerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                        `Hola ${payout.ownerName}, te escribimos desde ServiGo respecto a tu solicitud de retiro por $${payout.amount.toLocaleString('es-AR')}.`
+                                      )}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
+                                    >
+                                      <MessageSquare className="w-3 h-3" />
+                                      WhatsApp
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <div className="text-xs text-slate-400">Monto Solicitado</div>
+                                  <div className="text-lg font-black text-emerald-400">
+                                    ${payout.amount.toLocaleString('es-AR')}
+                                  </div>
+                                </div>
+
+                                {isPending && onUpdatePayoutStatus && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await onUpdatePayoutStatus(payout.id, 'transferido');
+                                        showToast(`✅ Transferencia por $${payout.amount.toLocaleString('es-AR')} a ${payout.ownerName} confirmada.`);
+                                      } catch (err) {
+                                        showToast('Error al actualizar estado del retiro.');
+                                      }
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Marcar Transferido</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Registro de Alquileres, Custodia y Garantías */}
+                <div className="bg-slate-950 p-5 rounded-3xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-sm font-black text-white flex items-center gap-2">
+                        <Package className="w-4 h-4 text-blue-400" />
+                        Operaciones de Alquiler y Estado de Fondos
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Auditoría en tiempo real de cada alquiler pactado: desglose del 10% de ServiGo, 90% del dueño y garantía.
+                      </p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300">
+                      Total: {rentalBookings.length}
+                    </span>
+                  </div>
+
+                  {rentalBookings.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-dashed border-slate-800">
+                      Aún no hay alquileres confirmados en la plataforma.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {rentalBookings.map((b) => (
+                        <div
+                          key={b.id}
+                          className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                            <div>
+                              <h5 className="font-black text-sm text-white flex items-center gap-2">
+                                {b.rentalItemTitle}
+                                <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md font-mono">
+                                  {b.totalDays} {b.totalDays === 1 ? 'día' : 'días'} ({b.startDate} al {b.endDate})
+                                </span>
+                              </h5>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                Inquilino: <strong className="text-slate-200">{b.clientName}</strong> ({b.clientPhone}) | Locador: <strong className="text-slate-200">{b.ownerName}</strong>
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              {b.clientDni && (
+                                <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono font-bold">
+                                  ✍️ Contrato DNI: {b.clientDni}
+                                </span>
+                              )}
+
+                              <span
+                                className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase ${
+                                  b.paymentStatus === 'pagado_en_custodia'
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                }`}
+                              >
+                                Pago: {b.paymentStatus === 'pagado_en_custodia' ? 'En Custodia' : 'Liquidado a Dueño'}
+                              </span>
+
+                              <span
+                                className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase ${
+                                  b.depositStatus === 'en_custodia'
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : b.depositStatus === 'retenido_por_dano'
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                    : 'bg-slate-700 text-slate-300 border border-slate-600'
+                                }`}
+                              >
+                                Garantía: {b.depositStatus === 'en_custodia' ? 'En Custodia' : b.depositStatus === 'retenido_por_dano' ? 'Retenida por Daño' : 'Devuelta'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Damage incident report banner if present */}
+                          {b.depositStatus === 'retenido_por_dano' && (
+                            <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1 text-xs text-rose-200">
+                              <span className="font-bold text-rose-300 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                                Daño o Rotura Reportada por el Dueño:
+                              </span>
+                              <p className="text-[11px] text-rose-100">
+                                {b.damageReport?.description || 'Daño constatado. Depósito de caución retenido a favor del locador.'}
+                              </p>
+                              {b.damageReport?.extraAmountClaimed && b.damageReport.extraAmountClaimed > 0 ? (
+                                <p className="text-[10px] font-bold text-rose-400">
+                                  Diferencia reclamada al cliente bajo Cláusula 4ta del contrato: ${b.damageReport.extraAmountClaimed.toLocaleString('es-AR')}
+                                </p>
+                              ) : null}
+                            </div>
+                          )}
+
+                          {/* Breakdown row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block">Total Pagado Inquilino</span>
+                              <span className="font-black text-white text-sm">
+                                ${(b.totalPrice + b.depositAmount).toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-emerald-400 block font-bold">10% ServiGo (Retenido)</span>
+                              <span className="font-black text-emerald-400 text-sm">
+                                ${b.platformFeeAmount.toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-amber-400 block font-bold">90% Neto Dueño</span>
+                              <span className="font-black text-amber-400 text-sm">
+                                ${b.ownerNetAmount.toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-blue-400 block font-bold">Caución Garantía</span>
+                              <span className="font-black text-blue-400 text-sm">
+                                ${b.depositAmount.toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action if item is active and return needed */}
+                          {(b.status === 'confirmado' || b.status === 'en_curso') && onConfirmRentalReturn && (
+                            <div className="flex justify-end pt-1">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await onConfirmRentalReturn(b.id);
+                                    showToast(`🎉 ¡Devolución de "${b.rentalItemTitle}" confirmada! Garantía reintegrada y saldo acreditado al dueño.`);
+                                  } catch (err) {
+                                    showToast('Error al confirmar devolución.');
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Confirmar Devolución Conforme & Reintegrar Garantía</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 9: REINICIAR Y BORRAR DATOS */}
             {activeTab === 'reset' && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="bg-rose-950/40 border border-rose-500/30 rounded-3xl p-5 sm:p-6 space-y-4 text-rose-100">
@@ -2065,7 +2976,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center gap-3">
                 <img
-                  src={workerToDelete.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  src={workerToDelete.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                   alt={workerToDelete.name}
                   className="w-12 h-12 rounded-xl object-cover border border-slate-800"
                 />

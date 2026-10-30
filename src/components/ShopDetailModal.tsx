@@ -144,6 +144,19 @@ export const ShopDetailModal: React.FC<ShopDetailModalProps> = ({
             </div>
           )}
 
+          {/* Accepts Worker-Issued Coupons */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/80 text-orange-950 flex items-start gap-3 shadow-xs">
+            <span className="text-xl shrink-0 mt-0.5">🎟️</span>
+            <div>
+              <h4 className="text-xs font-black uppercase text-orange-950 tracking-wider">
+                Acepta Cupones de Beneficio ServiGo
+              </h4>
+              <p className="text-xs font-medium text-orange-900 mt-0.5 leading-relaxed">
+                Si un trabajador de la red te entregó un cupón oficial por contratar sus servicios, puedes presentarlo aquí en caja al momento de tu compra para acceder a tu descuento.
+              </p>
+            </div>
+          </div>
+
           {/* About & Description */}
           <div className="space-y-2">
             <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">

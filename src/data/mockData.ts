@@ -1,5 +1,18 @@
 import { Worker, HardwareProduct, Shop, RemisDriver } from '../types';
 
+export const TRADE_NAMES: Record<string, string> = {
+  gasista: 'Gasista Matriculado',
+  electricista: 'Electricista',
+  plomero: 'Plomero / Sanitarista',
+  pintor: 'Pintor',
+  cerrajero: 'Cerrajero 24hs',
+  aire_acondicionado: 'Aire Acondicionado / Refrigeración',
+  albanil: 'Albañil / Construcción',
+  jardineria: 'Jardinería & Poda',
+  carpinteria: 'Carpintería',
+  fletes: 'Fletes & Mudanzas',
+};
+
 export const INITIAL_WORKERS: Worker[] = [
   {
     id: 'w-1',

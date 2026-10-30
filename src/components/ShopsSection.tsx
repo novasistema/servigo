@@ -437,23 +437,25 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
                     </p>
 
                     {/* Products tags preview */}
-                    {shop.servicesOrProducts && shop.servicesOrProducts.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {shop.servicesOrProducts.slice(0, 3).map((item, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200"
-                          >
-                            {item}
-                          </span>
-                        ))}
-                        {shop.servicesOrProducts.length > 3 && (
-                          <span className="text-[10px] font-bold text-slate-400 self-center">
-                            +{shop.servicesOrProducts.length - 3} más
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1 pt-1">
+                      <span className="text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200/90 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span>🎟️</span>
+                        <span>Acepta Cupones</span>
+                      </span>
+                      {shop.servicesOrProducts && shop.servicesOrProducts.length > 0 && shop.servicesOrProducts.slice(0, 2).map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                      {shop.servicesOrProducts && shop.servicesOrProducts.length > 2 && (
+                        <span className="text-[10px] font-bold text-slate-400 self-center">
+                          +{shop.servicesOrProducts.length - 2} más
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Actions */}

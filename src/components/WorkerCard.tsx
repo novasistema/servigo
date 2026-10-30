@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, MapPin, MessageCircle, ShieldCheck, Calendar, ChevronRight, Award, MessageSquare, Share2, Check } from 'lucide-react';
+import { Star, MapPin, MessageCircle, ShieldCheck, Calendar, ChevronRight, Award, MessageSquare, Share2, Check, Ticket } from 'lucide-react';
 import { Worker } from '../types';
 import { shareContent } from '../utils/share';
 
@@ -8,6 +8,7 @@ interface WorkerCardProps {
   onSelectWorker: (worker: Worker) => void;
   onOpenBooking: (worker: Worker) => void;
   onOpenReviewModal?: (worker: Worker) => void;
+  onOpenCouponModal?: (worker: Worker) => void;
 }
 
 export const WorkerCard: React.FC<WorkerCardProps> = ({
@@ -15,6 +16,7 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
   onSelectWorker,
   onOpenBooking,
   onOpenReviewModal,
+  onOpenCouponModal,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -166,6 +168,27 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Worker Delivers Coupon Benefit Button */}
+        {onOpenCouponModal && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenCouponModal(worker);
+            }}
+            className="w-full mb-2.5 py-2 px-3 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 hover:from-amber-500/25 hover:to-orange-500/20 border border-amber-300 rounded-xl sm:rounded-2xl text-amber-950 font-extrabold text-[11px] flex items-center justify-between gap-1.5 transition-all shadow-xs active:scale-98 cursor-pointer group/coupon"
+            title="Entregar cupón oficial de descuento a tu cliente por elegir tu servicio"
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="text-sm">🎟️</span>
+              <span className="truncate group-hover/coupon:text-orange-950">Entregar Cupón al Cliente</span>
+            </div>
+            <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase shrink-0 shadow-xs">
+              Beneficio
+            </span>
+          </button>
+        )}
 
         {/* Bio snippet */}
         <p className="text-xs text-slate-500 line-clamp-2 mb-2.5 leading-relaxed">

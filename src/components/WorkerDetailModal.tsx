@@ -18,6 +18,7 @@ import {
   Sparkles,
   Share2,
   Check,
+  Ticket,
 } from 'lucide-react';
 import { Worker, HardwareProduct } from '../types';
 import { shareContent } from '../utils/share';
@@ -27,6 +28,7 @@ interface WorkerDetailModalProps {
   onClose: () => void;
   onOpenBooking: (worker: Worker) => void;
   onOpenReviewModal: (worker: Worker) => void;
+  onOpenCouponModal?: (worker: Worker) => void;
   bruzzoneProducts: HardwareProduct[];
 }
 
@@ -35,6 +37,7 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
   onClose,
   onOpenBooking,
   onOpenReviewModal,
+  onOpenCouponModal,
   bruzzoneProducts,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'reviews' | 'gallery'>('info');
@@ -235,6 +238,39 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
                 </div>
               )}
 
+              {/* Coupon Reward Benefit Card */}
+              <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-amber-50/60 p-4 rounded-2xl border-2 border-amber-300 space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎟️</span>
+                    <div>
+                      <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                        Cupón de Beneficio al Contratar
+                      </h4>
+                      <p className="text-[10px] text-amber-800 font-bold">
+                        Válido en Ferretería Bruzzone y Comercios Adheridos
+                      </p>
+                    </div>
+                  </div>
+                  <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase shadow-xs">
+                    Premio
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                  Por elegir los servicios de <strong>{worker.name}</strong>, el cliente puede recibir un <strong>Cupón Oficial de Descuento</strong> para canjear en la ferretería o negocios asociados de la red.
+                </p>
+                {onOpenCouponModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenCouponModal(worker)}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>Emitir y Entregar Cupón al Cliente</span>
+                  </button>
+                )}
+              </div>
+
               {/* Services List */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -402,6 +438,17 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             <span>Agendar</span>
           </button>
+
+          {onOpenCouponModal && (
+            <button
+              onClick={() => onOpenCouponModal(worker)}
+              className="py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1 shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+              title="Entregar cupón oficial de descuento al cliente"
+            >
+              <Ticket className="w-4 h-4 text-slate-950 shrink-0" />
+              <span className="hidden sm:inline">Cupón</span>
+            </button>
+          )}
 
           <button
             onClick={() => onOpenReviewModal(worker)}

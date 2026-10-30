@@ -252,6 +252,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ worker, onClose, onS
             </span>
           </div>
 
+          {/* Client Coupon Reward Notification */}
+          <div className="bg-amber-50/80 border border-amber-300 p-3 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
+            <span className="text-base shrink-0">🎟️</span>
+            <span>
+              <strong>¡Beneficio exclusivo!</strong> Al contratar los servicios de {worker.name}, recibirás un cupón de descuento oficial para la ferretería o comercios de la red.
+            </span>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 pt-2">
             <button

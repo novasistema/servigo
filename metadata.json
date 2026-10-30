@@ -1,6 +1,10 @@
 {
-  "name": "ServiGo - La solución que buscas, está aquí",
-  "description": "Aplicación móvil ServiGo para la búsqueda rápida de trabajadores, comercios locales, y nuevo módulo de Remises / Viajes en tiempo real con mapa interactivo y auspicio de Ferretería Bruzzone.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Remix ServiGo + delivery",
+  "description": "Aplicación móvil para la búsqueda rápida y segura de trabajadores de servicios domésticos y profesionales (gasistas, electricistas, plomeros) con calificaciones, disponibilidad y el auspicio de Ferretería Bruzzone.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

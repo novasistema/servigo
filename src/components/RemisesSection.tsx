@@ -543,7 +543,9 @@ export const RemisesSection: React.FC<RemisesSectionProps> = ({
                     <h3 className="text-sm font-black text-slate-900 flex items-center gap-1">
                       {driver.name}
                       {driver.verified && (
-                        <ShieldCheck className="w-4 h-4 text-orange-600" title="Conductor Verificado" />
+                        <span title="Conductor Verificado">
+                          <ShieldCheck className="w-4 h-4 text-orange-600" />
+                        </span>
                       )}
                     </h3>
                     <p className="text-xs font-bold text-slate-700">

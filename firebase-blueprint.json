@@ -99,13 +99,172 @@
         "destination": { "type": "string" }
       },
       "required": ["id", "clientName", "origin", "destination"]
+    },
+    "SystemCoupon": {
+      "title": "SystemCoupon",
+      "description": "Cupones de beneficio y descuentos creados por el administrador para que los trabajadores entreguen a sus clientes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "codePrefix": { "type": "string" },
+        "title": { "type": "string" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "targetType": { "type": "string" },
+        "targetShopId": { "type": "string" },
+        "targetShopName": { "type": "string" },
+        "minSpend": { "type": "number" },
+        "description": { "type": "string" },
+        "termsAndConditions": { "type": "string" },
+        "active": { "type": "boolean" },
+        "validDays": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "codePrefix", "title", "discountType", "discountValue", "targetType", "description", "active"]
+    },
+    "IssuedVoucher": {
+      "title": "IssuedVoucher",
+      "description": "Vouchers y cupones individuales emitidos y entregados por trabajadores a sus clientes para ser canjeados en comercios o ferretería",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "voucherCode": { "type": "string" },
+        "couponId": { "type": "string" },
+        "couponTitle": { "type": "string" },
+        "discountText": { "type": "string" },
+        "targetShopName": { "type": "string" },
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "workerTrade": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "issuedAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "status": { "type": "string" },
+        "redeemedAt": { "type": "string" },
+        "redeemedByShop": { "type": "string" }
+      },
+      "required": ["id", "voucherCode", "couponId", "workerId", "workerName", "clientName", "issuedAt", "expiresAt", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil de usuario cliente o comercio con datos de envío y roles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "merchantId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "role", "deliveryAddress"]
+    },
+    "Merchant": {
+      "title": "Merchant",
+      "description": "Comercios de la red ServiGo Delivery (Ferretería Bruzzone, Gastronomía, Farmacias)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "address": { "type": "string" },
+        "location": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "deliveryTimeEstimate": { "type": "string" },
+        "deliveryFee": { "type": "number" },
+        "minOrder": { "type": "number" },
+        "hasOwnDelivery": { "type": "boolean" }
+      },
+      "required": ["id", "name", "category", "address", "phone", "isOpen", "deliveryFee"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Pedidos de delivery generados por clientes y gestionados por comercios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "merchantId": { "type": "string" },
+        "merchantName": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "items": { "type": "array" },
+        "itemsTotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "dispatchMethod": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["merchantId", "clientId", "clientName", "clientPhone", "deliveryAddress", "items", "total", "paymentMethod", "status"]
+    },
+    "JobProfile": {
+      "title": "JobProfile",
+      "description": "Perfiles y currículums vitae de postulantes y profesionales de oficio en la Bolsa de Trabajo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "trade": { "type": "string" },
+        "desiredTitle": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "location": { "type": "string" },
+        "zones": { "type": "array", "items": { "type": "string" } },
+        "yearsOfExperience": { "type": "number" },
+        "availability": { "type": "string" },
+        "hasOwnVehicle": { "type": "boolean" },
+        "hasOwnTools": { "type": "boolean" },
+        "isMatriculado": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "experience": { "type": "array", "items": { "type": "object" } },
+        "education": { "type": "array", "items": { "type": "object" } },
+        "certifications": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "trade", "phone", "whatsapp", "location", "summary"]
     }
   },
   "firestore": {
     "collections": {
+      "users": {
+        "entity": "UserProfile",
+        "description": "Colección de perfiles de clientes y comercios"
+      },
+      "merchants": {
+        "entity": "Merchant",
+        "description": "Colección de comercios adheridos al delivery"
+      },
+      "orders": {
+        "entity": "Order",
+        "description": "Colección de pedidos en tiempo real"
+      },
       "workers": {
         "entity": "Worker",
         "description": "Colección de trabajadores registrados en ServiGo"
+      },
+      "job_profiles": {
+        "entity": "JobProfile",
+        "description": "Colección de perfiles y currículums vitae en la Bolsa de Trabajo"
       },
       "bookings": {
         "entity": "BookingRequest",
@@ -118,6 +277,26 @@
       "ride_requests": {
         "entity": "RideRequest",
         "description": "Colección de solicitudes de viaje"
+      },
+      "coupons": {
+        "entity": "SystemCoupon",
+        "description": "Colección de cupones de descuento configurados por el administrador"
+      },
+      "issued_vouchers": {
+        "entity": "IssuedVoucher",
+        "description": "Colección de vouchers entregados por trabajadores a clientes y canjeables en comercios"
+      },
+      "rental_items": {
+        "entity": "RentalItem",
+        "description": "Colección de productos y herramientas en alquiler (estilo Givy.ar)"
+      },
+      "rental_bookings": {
+        "entity": "RentalBooking",
+        "description": "Colección de solicitudes y reservas de alquiler de productos"
+      },
+      "rental_owners": {
+        "entity": "RentalOwner",
+        "description": "Colección de propietarios registrados con billetera y datos de cobro"
       }
     }
   }

@@ -13,15 +13,42 @@ import { PromotedBannerCarousel } from './components/PromotedBannerCarousel';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { RegistrationPdfGuideModal } from './components/RegistrationPdfGuideModal';
 import { ShopsSection } from './components/ShopsSection';
+import { JobBoardSection } from './components/jobs/JobBoardSection';
 import { RemisesSection } from './components/RemisesSection';
+import { DeliveryModule } from './components/delivery/DeliveryModule';
+import { WelcomeHubModal } from './components/WelcomeHubModal';
+import { WelcomeHubScreen } from './components/WelcomeHubScreen';
+import { WorkerCouponModal } from './components/WorkerCouponModal';
+import { ShopDashboardModal } from './components/delivery/ShopDashboardModal';
+import { CadetesSection } from './components/cadetes/CadetesSection';
+import { RentalsModule } from './components/rentals/RentalsModule';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { INITIAL_WORKERS, BRUZZONE_PRODUCTS, INITIAL_SHOPS, INITIAL_REMISES } from './data/mockData';
-import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop, RemisDriver, RideRequest } from './types';
+import { INITIAL_JOB_PROFILES } from './data/mockJobProfiles';
+import { INITIAL_RENTAL_ITEMS } from './data/mockRentals';
+import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop, RemisDriver, RideRequest, SystemCoupon, IssuedVoucher, JobProfile, RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport } from './types';
 import {
   subscribeWorkers,
   subscribeBookings,
   subscribeShops,
+  subscribeJobProfiles,
   subscribeRemises,
   subscribeRideRequests,
+  subscribeCoupons,
+  subscribeIssuedVouchers,
+  subscribeRentalItems,
+  subscribeRentalBookings,
+  subscribeRentalOwners,
+  saveRentalOwnerToFirestore,
+  subscribeRentalPayouts,
+  saveRentalPayoutToFirestore,
+  updateRentalPayoutStatus,
+  updateRentalBookingStatus,
+  saveRentalItemToFirestore,
+  deleteRentalItemFromFirestore,
+  saveRentalBookingToFirestore,
+  saveJobProfileToFirestore,
+  deleteJobProfileFromFirestore,
   saveRemisToFirestore,
   updateRemisStatus,
   deleteRemisFromFirestore,
@@ -37,10 +64,14 @@ import {
   saveBannerToFirestore,
   deleteBannerFromFirestore,
   saveAppConfigToFirestore,
+  saveCouponToFirestore,
+  deleteCouponFromFirestore,
+  saveIssuedVoucherToFirestore,
   clearAllFirestoreData,
   resetFirestoreToDefaults,
   DEFAULT_TAB_CONFIG,
   INITIAL_BANNERS,
+  INITIAL_COUPONS,
 } from './lib/firebase';
 import { extractUniqueZones, normalizeZoneKey, formatZoneName } from './lib/zoneUtils';
 import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck, FileText } from 'lucide-react';
@@ -104,11 +135,123 @@ export default function App() {
 
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
 
+  // System Coupons (created by administrator)
+  const [coupons, setCoupons] = useState<SystemCoupon[]>(() => {
+    const saved = localStorage.getItem('servigo_coupons_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_COUPONS;
+  });
+
+  // Vouchers issued by workers to clients
+  const [issuedVouchers, setIssuedVouchers] = useState<IssuedVoucher[]>(() => {
+    const saved = localStorage.getItem('servigo_vouchers_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  // Job Profiles (Bolsa de Trabajo & RRHH)
+  const [jobProfiles, setJobProfiles] = useState<JobProfile[]>(() => {
+    const saved = localStorage.getItem('servigo_job_profiles_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_JOB_PROFILES;
+  });
+
+  // Rental Items (ServiGo Alquiler de Productos - Givy model)
+  const [rentalItems, setRentalItems] = useState<RentalItem[]>(() => {
+    const saved = localStorage.getItem('servigo_rentals_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_RENTAL_ITEMS;
+  });
+
+  const [rentalBookings, setRentalBookings] = useState<RentalBooking[]>(() => {
+    const saved = localStorage.getItem('servigo_rental_bookings_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  const [rentalOwners, setRentalOwners] = useState<RentalOwner[]>(() => {
+    const saved = localStorage.getItem('servigo_rental_owners_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  const [rentalPayouts, setRentalPayouts] = useState<RentalPayoutRequest[]>(() => {
+    const saved = localStorage.getItem('servigo_rental_payouts_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  const [selectedWorkerForCoupon, setSelectedWorkerForCoupon] = useState<Worker | null>(null);
+
   const [tabConfig, setTabConfig] = useState<TabVisibilityConfig>(DEFAULT_TAB_CONFIG);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [isPdfGuideOpen, setIsPdfGuideOpen] = useState<boolean>(false);
+  const [isShopDashboardModalOpen, setIsShopDashboardModalOpen] = useState<boolean>(false);
 
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
 
@@ -132,6 +275,14 @@ export default function App() {
       setIsCloudSynced(true);
     });
 
+    const unsubscribeJobProfiles = subscribeJobProfiles((firestoreJobProfiles) => {
+      if (firestoreJobProfiles && firestoreJobProfiles.length > 0) {
+        setJobProfiles(firestoreJobProfiles);
+        localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(firestoreJobProfiles));
+      }
+      setIsCloudSynced(true);
+    });
+
     const unsubscribeRemises = subscribeRemises((firestoreRemises) => {
       if (firestoreRemises && firestoreRemises.length > 0) {
         setRemises(firestoreRemises);
@@ -142,6 +293,42 @@ export default function App() {
 
     const unsubscribeRideRequests = subscribeRideRequests((firestoreRequests) => {
       setRideRequests(firestoreRequests);
+    });
+
+    const unsubscribeCoupons = subscribeCoupons((firestoreCoupons) => {
+      if (firestoreCoupons && firestoreCoupons.length > 0) {
+        setCoupons(firestoreCoupons);
+        localStorage.setItem('servigo_coupons_v1', JSON.stringify(firestoreCoupons));
+      }
+    });
+
+    const unsubscribeVouchers = subscribeIssuedVouchers((firestoreVouchers) => {
+      setIssuedVouchers(firestoreVouchers);
+      localStorage.setItem('servigo_vouchers_v1', JSON.stringify(firestoreVouchers));
+    });
+
+    const unsubscribeRentals = subscribeRentalItems((firestoreRentals) => {
+      if (firestoreRentals && firestoreRentals.length > 0) {
+        setRentalItems(firestoreRentals);
+        localStorage.setItem('servigo_rentals_v1', JSON.stringify(firestoreRentals));
+      }
+    });
+
+    const unsubscribeRentalBookings = subscribeRentalBookings((firestoreBookings) => {
+      setRentalBookings(firestoreBookings);
+      localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(firestoreBookings));
+    });
+
+    const unsubscribeRentalOwners = subscribeRentalOwners((firestoreOwners) => {
+      if (firestoreOwners && firestoreOwners.length > 0) {
+        setRentalOwners(firestoreOwners);
+        localStorage.setItem('servigo_rental_owners_v1', JSON.stringify(firestoreOwners));
+      }
+    });
+
+    const unsubscribeRentalPayouts = subscribeRentalPayouts((firestorePayouts) => {
+      setRentalPayouts(firestorePayouts);
+      localStorage.setItem('servigo_rental_payouts_v1', JSON.stringify(firestorePayouts));
     });
 
     const unsubscribeBanners = subscribeBanners((firestoreBanners) => {
@@ -161,12 +348,20 @@ export default function App() {
       unsubscribeWorkers();
       unsubscribeBookings();
       unsubscribeShops();
+      unsubscribeJobProfiles();
       unsubscribeRemises();
       unsubscribeRideRequests();
+      unsubscribeCoupons();
+      unsubscribeVouchers();
+      unsubscribeRentals();
+      unsubscribeRentalBookings();
+      unsubscribeRentalOwners();
+      unsubscribeRentalPayouts();
       unsubscribeBanners();
       unsubscribeConfig();
     };
   }, []);
+
 
   // Save to LocalStorage fallback cache
   useEffect(() => {
@@ -182,21 +377,45 @@ export default function App() {
   }, [shops]);
 
   useEffect(() => {
+    localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(jobProfiles));
+  }, [jobProfiles]);
+
+  useEffect(() => {
     localStorage.setItem('servigo_remises_v1', JSON.stringify(remises));
   }, [remises]);
 
-  // Navigation state
+  useEffect(() => {
+    localStorage.setItem('servigo_rentals_v1', JSON.stringify(rentalItems));
+  }, [rentalItems]);
+
+  useEffect(() => {
+    localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(rentalBookings));
+  }, [rentalBookings]);
+
+  // Navigation state (ServiGo Servicios includes jobs, shops, search, cadetes, remises, register, ai, bruzzone, bookings, alquiler)
   const [activeTab, setActiveTab] = useState<
-    'search' | 'shops' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings'
+    'search' | 'shops' | 'jobs' | 'delivery' | 'cadetes' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings' | 'alquiler'
   >('search');
+
+  // Welcome Portal / Hub selection state (ServiGo Servicios vs ServiGo Delivery)
+  const [isWelcomeHubOpen, setIsWelcomeHubOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return !sessionStorage.getItem('servigo_hub_entered');
+    }
+    return true;
+  });
 
   // Fallback active tab if current tab gets disabled by admin
   useEffect(() => {
     if (activeTab === 'search' && !tabConfig.search) {
-      if (tabConfig.register) setActiveTab('register');
+      if (tabConfig.jobs) setActiveTab('jobs');
+      else if (tabConfig.shops) setActiveTab('shops');
+      else if (tabConfig.register) setActiveTab('register');
       else if (tabConfig.sponsor) setActiveTab('bruzzone');
       else if (tabConfig.ai) setActiveTab('ai');
       else if (tabConfig.bookings) setActiveTab('bookings');
+    } else if (activeTab === 'jobs' && tabConfig.jobs === false) {
+      setActiveTab('search');
     }
   }, [tabConfig, activeTab]);
 
@@ -331,6 +550,36 @@ export default function App() {
       await deleteShopFromFirestore(shopId);
     } catch (err) {
       console.error('Failed to delete shop from Firestore:', err);
+    }
+  };
+
+  const handleSaveJobProfile = async (profile: JobProfile) => {
+    setJobProfiles((prev) => {
+      const exists = prev.some((p) => p.id === profile.id);
+      const updated = exists ? prev.map((p) => (p.id === profile.id ? profile : p)) : [profile, ...prev];
+      localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(updated));
+      return updated;
+    });
+    showToast('🎉 ¡Tu Currículum Vitae fue publicado exitosamente en la Bolsa de Trabajo!');
+
+    try {
+      await saveJobProfileToFirestore(profile);
+    } catch (err) {
+      console.error('Failed to save job profile to Firestore:', err);
+    }
+  };
+
+  const handleDeleteJobProfile = async (profileId: string) => {
+    setJobProfiles((prev) => {
+      const updated = prev.filter((p) => p.id !== profileId);
+      localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(updated));
+      return updated;
+    });
+    showToast('Perfil de currículum eliminado.');
+    try {
+      await deleteJobProfileFromFirestore(profileId);
+    } catch (err) {
+      console.error('Failed to delete job profile from Firestore:', err);
     }
   };
 
@@ -490,6 +739,343 @@ export default function App() {
     }
   };
 
+  const handleSaveCoupon = async (coupon: SystemCoupon) => {
+    try {
+      await saveCouponToFirestore(coupon);
+      setCoupons((prev) => {
+        const exists = prev.some((c) => c.id === coupon.id);
+        const updated = exists ? prev.map((c) => (c.id === coupon.id ? coupon : c)) : [coupon, ...prev];
+        localStorage.setItem('servigo_coupons_v1', JSON.stringify(updated));
+        return updated;
+      });
+      showToast(`¡Cupón "${coupon.title}" guardado correctamente!`);
+    } catch (err) {
+      console.error('Error saving coupon to Firestore:', err);
+      showToast('❌ Error al guardar cupón en la nube.');
+    }
+  };
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    try {
+      await deleteCouponFromFirestore(couponId);
+      setCoupons((prev) => {
+        const updated = prev.filter((c) => c.id !== couponId);
+        localStorage.setItem('servigo_coupons_v1', JSON.stringify(updated));
+        return updated;
+      });
+      showToast('Cupón de beneficio eliminado.');
+    } catch (err) {
+      console.error('Error deleting coupon from Firestore:', err);
+      showToast('❌ Error al eliminar cupón.');
+    }
+  };
+
+  const handleIssueVoucher = async (voucher: IssuedVoucher) => {
+    try {
+      await saveIssuedVoucherToFirestore(voucher);
+      setIssuedVouchers((prev) => {
+        const updated = [voucher, ...prev];
+        localStorage.setItem('servigo_vouchers_v1', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      console.error('Error saving issued voucher to Firestore:', err);
+      throw err;
+    }
+  };
+
+  const handleSaveRentalItem = async (item: RentalItem, owner?: RentalOwner) => {
+    try {
+      await saveRentalItemToFirestore(item);
+      setRentalItems((prev) => {
+        const exists = prev.some((i) => i.id === item.id);
+        const updated = exists ? prev.map((i) => (i.id === item.id ? item : i)) : [item, ...prev];
+        localStorage.setItem('servigo_rentals_v1', JSON.stringify(updated));
+        return updated;
+      });
+
+      if (owner) {
+        await saveRentalOwnerToFirestore(owner);
+        setRentalOwners((prev) => {
+          const exists = prev.some((o) => o.id === owner.id);
+          const updated = exists ? prev.map((o) => (o.id === owner.id ? owner : o)) : [owner, ...prev];
+          localStorage.setItem('servigo_rental_owners_v1', JSON.stringify(updated));
+          return updated;
+        });
+      }
+
+      showToast(`¡"${item.title}" guardado en ServiGo Alquiler!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar artículo de alquiler.');
+      throw err;
+    }
+  };
+
+  const handleDeleteRentalItem = async (itemId: string) => {
+    try {
+      await deleteRentalItemFromFirestore(itemId);
+      setRentalItems((prev) => {
+        const updated = prev.filter((i) => i.id !== itemId);
+        localStorage.setItem('servigo_rentals_v1', JSON.stringify(updated));
+        return updated;
+      });
+      showToast('Artículo eliminado de ServiGo Alquiler.');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al eliminar artículo.');
+    }
+  };
+
+  const handleBookRental = async (booking: RentalBooking) => {
+    try {
+      await saveRentalBookingToFirestore(booking);
+      setRentalBookings((prev) => {
+        const updated = [booking, ...prev];
+        localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const handleRequestPayout = async (payout: RentalPayoutRequest) => {
+    try {
+      await saveRentalPayoutToFirestore(payout);
+      setRentalPayouts((prev) => {
+        const updated = [payout, ...prev];
+        localStorage.setItem('servigo_rental_payouts_v1', JSON.stringify(updated));
+        return updated;
+      });
+      showToast('¡Solicitud de retiro enviada! La administración transferirá a tu CBU/Alias.');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al solicitar retiro.');
+      throw err;
+    }
+  };
+
+  const handleConfirmItemReturned = async (bookingId: string) => {
+    try {
+      await updateRentalBookingStatus(bookingId, {
+        status: 'devuelto',
+        paymentStatus: 'liquidado_a_dueno',
+        depositStatus: 'devuelto_a_cliente',
+      });
+      setRentalBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId
+            ? {
+                ...b,
+                status: 'devuelto',
+                paymentStatus: 'liquidado_a_dueno',
+                depositStatus: 'devuelto_a_cliente',
+              }
+            : b
+        )
+      );
+      showToast('🎉 ¡Devolución confirmada! Caución reintegrada y saldo acreditado al dueño.');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al actualizar estado del alquiler.');
+      throw err;
+    }
+  };
+
+  const handleReportDamage = async (
+    bookingId: string,
+    damageReport: DamageReport
+  ) => {
+    try {
+      await updateRentalBookingStatus(bookingId, {
+        status: 'devuelto',
+        paymentStatus: 'liquidado_a_dueno',
+        depositStatus: 'retenido_por_dano',
+        damageReport,
+      });
+      setRentalBookings((prev) => {
+        const updated = prev.map((b) =>
+          b.id === bookingId
+            ? {
+                ...b,
+                status: 'devuelto' as const,
+                paymentStatus: 'liquidado_a_dueno' as const,
+                depositStatus: 'retenido_por_dano' as const,
+                damageReport,
+              }
+            : b
+        );
+        localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(updated));
+        return updated;
+      });
+      showToast('⚠️ Daño registrado: la caución de garantía ha sido retenida a favor del locador según contrato.');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al registrar informe de daño.');
+      throw err;
+    }
+  };
+
+  const handleUpdatePayoutStatus = async (
+    payoutId: string,
+    status: 'procesando' | 'transferido' | 'rechazado'
+  ) => {
+    try {
+      await updateRentalPayoutStatus(payoutId, status);
+      setRentalPayouts((prev) =>
+        prev.map((p) =>
+          p.id === payoutId
+            ? { ...p, status, processedAt: new Date().toISOString() }
+            : p
+        )
+      );
+      showToast(`Estado de la transferencia actualizado a "${status}".`);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al actualizar transferencia.');
+      throw err;
+    }
+  };
+
+  if (isWelcomeHubOpen) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-orange-600 selection:text-white">
+        <WelcomeHubScreen
+          onSelectModule={(module) => {
+            if (module === 'delivery') {
+              setActiveTab('delivery');
+            } else if (module === 'alquiler') {
+              setActiveTab('alquiler');
+            } else if (module === 'cadetes') {
+              setActiveTab('cadetes');
+            } else {
+              setActiveTab('search');
+            }
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('servigo_hub_entered', 'true');
+            }
+            setIsWelcomeHubOpen(false);
+          }}
+          onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
+          onOpenAdminPanel={() => setIsAdminModalOpen(true)}
+          isAdminAuthenticated={isAdminAuthenticated}
+        />
+
+
+        {/* Allow opening PDF Guide and Admin from Welcome Hub */}
+        <RegistrationPdfGuideModal
+          isOpen={isPdfGuideOpen}
+          onClose={() => setIsPdfGuideOpen(false)}
+        />
+
+        <AdminPanelModal
+          isOpen={isAdminModalOpen}
+          onClose={() => setIsAdminModalOpen(false)}
+          isAdminAuthenticated={isAdminAuthenticated}
+          setIsAdminAuthenticated={setIsAdminAuthenticated}
+          tabConfig={tabConfig}
+          appConfig={appConfig}
+          onSaveAppConfig={async (updatedConfig) => {
+            await saveAppConfigToFirestore(updatedConfig);
+            setAppConfig(updatedConfig);
+            if (updatedConfig.tabs) {
+              setTabConfig(updatedConfig.tabs);
+            }
+          }}
+          onSaveTabConfig={async (newTabs) => {
+            const newConfig: AppConfig = {
+              id: 'settings',
+              tabs: newTabs,
+              customLogoUrl: appConfig?.customLogoUrl,
+              tagline: appConfig?.tagline,
+              updatedAt: new Date().toISOString(),
+            };
+            await saveAppConfigToFirestore(newConfig);
+            setTabConfig(newTabs);
+          }}
+          banners={banners}
+          onSaveBanner={async (banner) => {
+            await saveBannerToFirestore(banner);
+          }}
+          onDeleteBanner={async (bannerId) => {
+            await deleteBannerFromFirestore(bannerId);
+          }}
+          workers={workers}
+          onAddNewTrade={handleAddNewTrade}
+          onSaveWorker={async (updatedWorker) => {
+            const formattedWorker: Worker = {
+              ...updatedWorker,
+              location: formatZoneName(updatedWorker.location),
+              zones: extractUniqueZones(updatedWorker.zones || []),
+            };
+            setWorkers((prev) => {
+              const exists = prev.some((w) => w.id === formattedWorker.id);
+              return exists
+                ? prev.map((w) => (w.id === formattedWorker.id ? formattedWorker : w))
+                : [formattedWorker, ...prev];
+            });
+            try {
+              await saveWorkerToFirestore(formattedWorker);
+              showToast(`¡Perfil de ${formattedWorker.name} guardado correctamente!`);
+            } catch (err) {
+              console.error('Failed to update worker in Firestore:', err);
+              showToast('❌ Error al actualizar trabajador.');
+            }
+          }}
+          onDeleteWorker={async (workerId) => {
+            await deleteWorkerFromFirestore(workerId);
+          }}
+          shops={shops}
+          onSaveShop={handleSaveShop}
+          onDeleteShop={handleDeleteShop}
+          remises={remises}
+          onSaveRemis={handleSaveRemis}
+          onDeleteRemis={handleDeleteRemis}
+          coupons={coupons}
+          onSaveCoupon={handleSaveCoupon}
+          onDeleteCoupon={handleDeleteCoupon}
+          issuedVouchers={issuedVouchers}
+          onSaveIssuedVoucher={async (updatedVoucher) => {
+            try {
+              await saveIssuedVoucherToFirestore(updatedVoucher);
+              setIssuedVouchers((prev) =>
+                prev.map((v) => (v.id === updatedVoucher.id ? updatedVoucher : v))
+              );
+            } catch (err) {
+              console.error('Error updating voucher status:', err);
+              showToast('Error al actualizar estado del voucher');
+            }
+          }}
+          onClearAllData={async () => {
+            await clearAllFirestoreData();
+            localStorage.removeItem('servigo_workers_v1');
+            localStorage.removeItem('servigo_bookings_v1');
+            localStorage.removeItem('servigo_shops_v1');
+            localStorage.removeItem('servigo_remises_v1');
+            setWorkers([]);
+            setBookings([]);
+            setShops([]);
+            setRemises([]);
+            setBanners([]);
+            setTabConfig(DEFAULT_TAB_CONFIG);
+            showToast('💥 ¡Todos los datos han sido borrados por completo! Sistema iniciado en blanco.');
+          }}
+          onResetToDefaults={async () => {
+            await resetFirestoreToDefaults();
+            localStorage.removeItem('servigo_workers_v1');
+            localStorage.removeItem('servigo_bookings_v1');
+            localStorage.removeItem('servigo_shops_v1');
+            localStorage.removeItem('servigo_remises_v1');
+            showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
+          }}
+          showToast={showToast}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-orange-500 selection:text-white">
       {/* Toast Notification */}
@@ -505,11 +1091,20 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         bookingCount={bookings.length}
+        rentalItemsCount={rentalItems.length}
         tabConfig={tabConfig}
         customLogoUrl={appConfig?.customLogoUrl}
         customTagline={appConfig?.tagline}
         onOpenAdminPanel={() => setIsAdminModalOpen(true)}
         onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
+        onOpenShopDashboard={() => setIsShopDashboardModalOpen(true)}
+        onOpenPublishRental={() => setActiveTab('alquiler')}
+        onOpenWelcomeHub={() => {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('servigo_hub_entered');
+          }
+          setIsWelcomeHubOpen(true);
+        }}
         isAdminAuthenticated={isAdminAuthenticated}
       />
 
@@ -606,6 +1201,7 @@ export default function App() {
                       onSelectWorker={setSelectedWorkerForModal}
                       onOpenBooking={setSelectedWorkerForBooking}
                       onOpenReviewModal={setSelectedWorkerForReview}
+                      onOpenCouponModal={setSelectedWorkerForCoupon}
                     />
                   ))}
                 </div>
@@ -623,6 +1219,42 @@ export default function App() {
               onZoneSelect={setSelectedZone}
               onSaveShop={handleSaveShop}
             />
+          </div>
+        )}
+
+        {/* TAB 2.1: BOLSA DE TRABAJO (RRHH Y CURRÍCULUMS VITAE CON IA) - EXCLUSIVO SERVIGO SERVICIOS */}
+        {activeTab === 'jobs' && (
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <JobBoardSection
+              jobProfiles={jobProfiles}
+              onSaveJobProfile={handleSaveJobProfile}
+              showToast={showToast}
+              availableZones={availableZones}
+            />
+          </div>
+        )}
+
+        {/* TAB 2.2: SERVIGO DELIVERY - COMERCIOS DE COMIDA */}
+        {activeTab === 'delivery' && (
+          <DeliveryModule
+            showToast={showToast}
+            onNavigateToHome={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('servigo_hub_entered');
+              }
+              setIsWelcomeHubOpen(true);
+            }}
+            onSwitchToServicios={() => setActiveTab('search')}
+            onSwitchToCadetes={() => setActiveTab('cadetes')}
+          />
+        )}
+
+        {/* TAB 2.3: CADETES & MANDADOS URBANOS */}
+        {activeTab === 'cadetes' && (
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+            <ErrorBoundary fallbackTitle="Error al cargar el módulo de cadetes">
+              <CadetesSection showToast={showToast} />
+            </ErrorBoundary>
           </div>
         )}
 
@@ -679,6 +1311,25 @@ export default function App() {
             />
           </div>
         )}
+
+        {/* TAB 6: SERVIGO ALQUILER DE PRODUCTOS (ESTILO GIVY) */}
+        {activeTab === 'alquiler' && (
+          <RentalsModule
+            items={rentalItems}
+            bookings={rentalBookings}
+            owners={rentalOwners}
+            onSaveRentalItem={handleSaveRentalItem}
+            onDeleteRentalItem={handleDeleteRentalItem}
+            onBookRental={handleBookRental}
+            onRequestPayout={handleRequestPayout}
+            onConfirmItemReturned={handleConfirmItemReturned}
+            onReportDamage={handleReportDamage}
+            showToast={showToast}
+            onOpenCadetesModule={() => setActiveTab('cadetes')}
+            onOpenDeliveryModule={() => setActiveTab('delivery')}
+            onOpenServiciosModule={() => setActiveTab('search')}
+          />
+        )}
       </main>
 
       {/* MODALS */}
@@ -693,6 +1344,9 @@ export default function App() {
           onOpenReviewModal={(w) => {
             setSelectedWorkerForModal(null);
             setSelectedWorkerForReview(w);
+          }}
+          onOpenCouponModal={(w) => {
+            setSelectedWorkerForCoupon(w);
           }}
           bruzzoneProducts={BRUZZONE_PRODUCTS}
         />
@@ -711,6 +1365,18 @@ export default function App() {
           worker={selectedWorkerForReview}
           onClose={() => setSelectedWorkerForReview(null)}
           onSubmitReview={handleSubmitReview}
+        />
+      )}
+
+      {/* Worker Deliver Coupon to Client Modal */}
+      {selectedWorkerForCoupon && (
+        <WorkerCouponModal
+          isOpen={!!selectedWorkerForCoupon}
+          onClose={() => setSelectedWorkerForCoupon(null)}
+          worker={selectedWorkerForCoupon}
+          coupons={coupons}
+          onIssueVoucher={handleIssueVoucher}
+          showToast={showToast}
         />
       )}
 
@@ -778,6 +1444,21 @@ export default function App() {
         remises={remises}
         onSaveRemis={handleSaveRemis}
         onDeleteRemis={handleDeleteRemis}
+        coupons={coupons}
+        onSaveCoupon={handleSaveCoupon}
+        onDeleteCoupon={handleDeleteCoupon}
+        issuedVouchers={issuedVouchers}
+        onSaveIssuedVoucher={async (updatedVoucher) => {
+          try {
+            await saveIssuedVoucherToFirestore(updatedVoucher);
+            setIssuedVouchers((prev) =>
+              prev.map((v) => (v.id === updatedVoucher.id ? updatedVoucher : v))
+            );
+          } catch (err) {
+            console.error('Error updating voucher status:', err);
+            showToast('Error al actualizar estado del voucher');
+          }
+        }}
         onClearAllData={async () => {
           await clearAllFirestoreData();
           localStorage.removeItem('servigo_workers_v1');
@@ -800,6 +1481,12 @@ export default function App() {
           localStorage.removeItem('servigo_remises_v1');
           showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
         }}
+        rentalBookings={rentalBookings}
+        rentalPayouts={rentalPayouts}
+        rentalItems={rentalItems}
+        rentalOwners={rentalOwners}
+        onUpdatePayoutStatus={handleUpdatePayoutStatus}
+        onConfirmRentalReturn={handleConfirmItemReturned}
         showToast={showToast}
       />
 
@@ -865,6 +1552,40 @@ export default function App() {
       <RegistrationPdfGuideModal
         isOpen={isPdfGuideOpen}
         onClose={() => setIsPdfGuideOpen(false)}
+      />
+
+      {/* ShopDashboardModal for Store Owners */}
+      <ErrorBoundary fallbackTitle="Error en el panel de control del comercio">
+        <ShopDashboardModal
+          isOpen={isShopDashboardModalOpen}
+          onClose={() => setIsShopDashboardModalOpen(false)}
+          showToast={showToast}
+        />
+      </ErrorBoundary>
+
+      {/* Welcome Portal / Module Redirection Modal */}
+      <WelcomeHubModal
+        isOpen={isWelcomeHubOpen}
+        onClose={() => {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('servigo_hub_entered', 'true');
+          }
+          setIsWelcomeHubOpen(false);
+        }}
+        onSelectHub={(hub) => {
+          if (hub === 'delivery') {
+            setActiveTab('delivery');
+          } else if (hub === 'cadetes') {
+            setActiveTab('cadetes');
+          } else {
+            setActiveTab('search');
+          }
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('servigo_hub_entered', 'true');
+          }
+          setIsWelcomeHubOpen(false);
+        }}
+        canDismiss={true}
       />
     </div>
   );

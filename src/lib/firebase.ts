@@ -13,8 +13,10 @@ import {
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop, RemisDriver, RideRequest } from '../types';
+import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop, RemisDriver, RideRequest, SystemCoupon, IssuedVoucher, JobProfile, RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest } from '../types';
 import { INITIAL_WORKERS, INITIAL_SHOPS, INITIAL_REMISES } from '../data/mockData';
+import { INITIAL_JOB_PROFILES } from '../data/mockJobProfiles';
+import { INITIAL_RENTAL_ITEMS } from '../data/mockRentals';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App lazily/safely
@@ -32,10 +34,20 @@ const APP_CONFIG_COLLECTION = 'app_config';
 const SHOPS_COLLECTION = 'shops';
 const REMISES_COLLECTION = 'remises';
 const RIDE_REQUESTS_COLLECTION = 'ride_requests';
+const COUPONS_COLLECTION = 'coupons';
+const VOUCHERS_COLLECTION = 'issued_vouchers';
+const JOB_PROFILES_COLLECTION = 'job_profiles';
+const RENTALS_COLLECTION = 'rental_items';
+const RENTAL_BOOKINGS_COLLECTION = 'rental_bookings';
+const RENTAL_OWNERS_COLLECTION = 'rental_owners';
+const RENTAL_PAYOUTS_COLLECTION = 'rental_payouts';
 
 export const DEFAULT_TAB_CONFIG: TabVisibilityConfig = {
   search: true,
   shops: true,
+  jobs: true,
+  delivery: true,
+  cadetes: true,
   remises: true,
   register: true,
   sponsor: true,
@@ -492,6 +504,249 @@ export async function deleteRideRequestFromFirestore(requestId: string): Promise
 }
 
 /**
+ * Initial Administrator-Created Discount Coupons
+ */
+export const INITIAL_COUPONS: SystemCoupon[] = [
+  {
+    id: 'coupon-bruzzone-15',
+    codePrefix: 'BRUZZONE15',
+    title: '15% OFF en Ferretería Bruzzone',
+    discountType: 'percentage',
+    discountValue: 15,
+    targetType: 'ferreteria_bruzzone',
+    targetShopName: 'Ferretería Bruzzone (Sponsor Oficial)',
+    minSpend: 0,
+    description: 'Beneficio exclusivo por contratar profesionales verificados en ServiGo. Válido en cañerías, herramientas, electricidad y pinturas.',
+    termsAndConditions: 'Presentar el voucher emitido por tu profesional ServiGo en caja al abonar tu compra en Ferretería Bruzzone.',
+    active: true,
+    validDays: 30,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'coupon-comercios-10',
+    codePrefix: 'RED10',
+    title: '10% OFF en Comercios Adheridos',
+    discountType: 'percentage',
+    discountValue: 10,
+    targetType: 'all_shops',
+    targetShopName: 'Comercios y Talleres Adheridos',
+    minSpend: 15000,
+    description: 'Descuento especial en corralones, talleres, buloneras y comercios adheridos a la red comercial local.',
+    termsAndConditions: 'Válido para compras superiores a $15.000 en comercios participantes de la red ServiGo.',
+    active: true,
+    validDays: 30,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'coupon-materiales-5000',
+    codePrefix: 'OBRA5000',
+    title: '$5.000 de Descuento en Corralón & Obras',
+    discountType: 'fixed',
+    discountValue: 5000,
+    targetType: 'all_shops',
+    targetShopName: 'Corralones y Materiales de Construcción',
+    minSpend: 35000,
+    description: 'Ahorro directo de $5.000 en compras de materiales gruesos, cemento, áridos o sanitarios.',
+    termsAndConditions: 'Válido en compras mínimas de $35.000 presentando el cupón oficial entregado por tu albañil, plomero o gasista.',
+    active: true,
+    validDays: 45,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+/**
+ * Subscribe to Coupons created by administrator
+ */
+export function subscribeCoupons(onData: (coupons: SystemCoupon[]) => void): () => void {
+  const couponsQuery = query(collection(db, COUPONS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    couponsQuery,
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const coupons: SystemCoupon[] = [];
+        snapshot.forEach((docSnap) => {
+          coupons.push(docSnap.data() as SystemCoupon);
+        });
+        onData(coupons);
+      } else {
+        // Seed initial default coupons if collection is empty
+        INITIAL_COUPONS.forEach((c) => {
+          setDoc(doc(db, COUPONS_COLLECTION, c.id), sanitizeForFirestore(c));
+        });
+        onData(INITIAL_COUPONS);
+      }
+    },
+    (error) => {
+      console.error('Error fetching coupons from Firestore:', error);
+      onData(INITIAL_COUPONS);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update a Coupon in Firestore
+ */
+export async function saveCouponToFirestore(coupon: SystemCoupon): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(coupon);
+    const ref = doc(db, COUPONS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving coupon to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a Coupon from Firestore
+ */
+export async function deleteCouponFromFirestore(couponId: string): Promise<void> {
+  try {
+    const ref = doc(db, COUPONS_COLLECTION, couponId);
+    await deleteDoc(ref);
+  } catch (error) {
+    console.error('Error deleting coupon from Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Issued Vouchers delivered by workers to clients
+ */
+export function subscribeIssuedVouchers(onData: (vouchers: IssuedVoucher[]) => void): () => void {
+  const vouchersQuery = query(collection(db, VOUCHERS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    vouchersQuery,
+    (snapshot) => {
+      const vouchers: IssuedVoucher[] = [];
+      snapshot.forEach((docSnap) => {
+        vouchers.push(docSnap.data() as IssuedVoucher);
+      });
+      // Sort newest first
+      vouchers.sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+      onData(vouchers);
+    },
+    (error) => {
+      console.error('Error fetching issued vouchers:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save an Issued Voucher delivered to a client
+ */
+export async function saveIssuedVoucherToFirestore(voucher: IssuedVoucher): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(voucher);
+    const ref = doc(db, VOUCHERS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving issued voucher to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Redeem an issued voucher in a shop
+ */
+export async function redeemVoucherInFirestore(voucherCode: string, redeemedByShop: string): Promise<IssuedVoucher | null> {
+  try {
+    const snapshot = await getDocs(collection(db, VOUCHERS_COLLECTION));
+    const targetDoc = snapshot.docs.find((d) => {
+      const data = d.data() as IssuedVoucher;
+      return data.voucherCode?.trim().toUpperCase() === voucherCode.trim().toUpperCase();
+    });
+
+    if (!targetDoc) return null;
+
+    const voucher = targetDoc.data() as IssuedVoucher;
+    if (voucher.status === 'redeemed') {
+      return voucher; // already redeemed
+    }
+
+    const updatedVoucher: IssuedVoucher = {
+      ...voucher,
+      status: 'redeemed',
+      redeemedAt: new Date().toISOString(),
+      redeemedByShop,
+    };
+
+    await setDoc(doc(db, VOUCHERS_COLLECTION, updatedVoucher.id), sanitizeForFirestore(updatedVoucher), { merge: true });
+    return updatedVoucher;
+  } catch (error) {
+    console.error('Error redeeming voucher in Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * ============================================================================
+ * BOLSA DE TRABAJO & CURRICULUM VITAE (RRHH)
+ * ============================================================================
+ */
+
+/**
+ * Subscribe to real-time updates for job profiles / CVs
+ */
+export function subscribeJobProfiles(onData: (profiles: JobProfile[]) => void): () => void {
+  const profilesRef = collection(db, JOB_PROFILES_COLLECTION);
+  const q = query(profilesRef, orderBy('createdAt', 'desc'));
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const list: JobProfile[] = snapshot.docs.map((docSnap) => docSnap.data() as JobProfile);
+      onData(list);
+    },
+    (error) => {
+      console.warn('Fallback query for job_profiles without orderBy:', error);
+      onSnapshot(profilesRef, (fallbackSnapshot) => {
+        const list: JobProfile[] = fallbackSnapshot.docs.map(
+          (docSnap) => docSnap.data() as JobProfile
+        );
+        onData(list);
+      });
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update a Job Profile / CV in Firestore
+ */
+export async function saveJobProfileToFirestore(profile: JobProfile): Promise<void> {
+  try {
+    const cleanProfile = sanitizeForFirestore(profile);
+    const profileRef = doc(db, JOB_PROFILES_COLLECTION, profile.id);
+    await setDoc(profileRef, cleanProfile, { merge: true });
+  } catch (error) {
+    console.error('Error saving job profile to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a Job Profile / CV from Firestore
+ */
+export async function deleteJobProfileFromFirestore(profileId: string): Promise<void> {
+  try {
+    const profileRef = doc(db, JOB_PROFILES_COLLECTION, profileId);
+    await deleteDoc(profileRef);
+  } catch (error) {
+    console.error('Error deleting job profile from Firestore:', error);
+    throw error;
+  }
+}
+
+/**
  * Subscribe to App Configuration (Tab visibility)
  */
 export function subscribeAppConfig(onData: (config: AppConfig) => void): () => void {
@@ -549,7 +804,219 @@ async function clearCollection(collectionName: string): Promise<void> {
 }
 
 /**
- * Completely wipe ALL data from Firestore (Workers, Bookings, Banners, and Reset App Config)
+ * Subscribe to Rental Items in Realtime (ServiGo Alquiler de Productos - Givy style)
+ */
+export function subscribeRentalItems(onData: (items: RentalItem[]) => void): () => void {
+  const itemsQuery = query(collection(db, RENTALS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    itemsQuery,
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const items: RentalItem[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data() as RentalItem);
+        });
+        onData(items);
+      } else {
+        // Seed initial default rental items if collection is empty
+        INITIAL_RENTAL_ITEMS.forEach((item) => {
+          setDoc(doc(db, RENTALS_COLLECTION, item.id), sanitizeForFirestore(item));
+        });
+        onData(INITIAL_RENTAL_ITEMS);
+      }
+    },
+    (error) => {
+      console.error('Error fetching rental items from Firestore:', error);
+      onData(INITIAL_RENTAL_ITEMS);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update a Rental Item in Firestore
+ */
+export async function saveRentalItemToFirestore(item: RentalItem): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(item);
+    const ref = doc(db, RENTALS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving rental item to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a Rental Item from Firestore
+ */
+export async function deleteRentalItemFromFirestore(itemId: string): Promise<void> {
+  try {
+    const ref = doc(db, RENTALS_COLLECTION, itemId);
+    await deleteDoc(ref);
+  } catch (error) {
+    console.error('Error deleting rental item from Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Rental Bookings in Realtime
+ */
+export function subscribeRentalBookings(onData: (bookings: RentalBooking[]) => void): () => void {
+  const bookingsQuery = query(collection(db, RENTAL_BOOKINGS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    bookingsQuery,
+    (snapshot) => {
+      const bookings: RentalBooking[] = [];
+      snapshot.forEach((docSnap) => {
+        bookings.push(docSnap.data() as RentalBooking);
+      });
+      onData(bookings);
+    },
+    (error) => {
+      console.error('Error fetching rental bookings from Firestore:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save a Rental Booking to Firestore
+ */
+export async function saveRentalBookingToFirestore(booking: RentalBooking): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(booking);
+    const ref = doc(db, RENTAL_BOOKINGS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving rental booking to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update Rental Booking Statuses (Booking, Payment & Deposit Escrow)
+ */
+export async function updateRentalBookingStatus(
+  bookingId: string,
+  updates: Partial<RentalBooking>
+): Promise<void> {
+  try {
+    const ref = doc(db, RENTAL_BOOKINGS_COLLECTION, bookingId);
+    await updateDoc(ref, sanitizeForFirestore({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error('Error updating rental booking in Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Registered Rental Owners (Locadores)
+ */
+export function subscribeRentalOwners(onData: (owners: RentalOwner[]) => void): () => void {
+  const ownersQuery = query(collection(db, RENTAL_OWNERS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    ownersQuery,
+    (snapshot) => {
+      const owners: RentalOwner[] = [];
+      snapshot.forEach((docSnap) => {
+        owners.push(docSnap.data() as RentalOwner);
+      });
+      onData(owners);
+    },
+    (error) => {
+      console.error('Error fetching rental owners from Firestore:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update a Rental Owner in Firestore
+ */
+export async function saveRentalOwnerToFirestore(owner: RentalOwner): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(owner);
+    const ref = doc(db, RENTAL_OWNERS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving rental owner to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to Rental Payout Requests (Retiros de Billetera a CBU/Alias)
+ */
+export function subscribeRentalPayouts(onData: (payouts: RentalPayoutRequest[]) => void): () => void {
+  const payoutsQuery = query(collection(db, RENTAL_PAYOUTS_COLLECTION));
+
+  const unsubscribe = onSnapshot(
+    payoutsQuery,
+    (snapshot) => {
+      const payouts: RentalPayoutRequest[] = [];
+      snapshot.forEach((docSnap) => {
+        payouts.push(docSnap.data() as RentalPayoutRequest);
+      });
+      onData(payouts);
+    },
+    (error) => {
+      console.error('Error fetching rental payouts from Firestore:', error);
+      onData([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save a Rental Payout Request to Firestore
+ */
+export async function saveRentalPayoutToFirestore(payout: RentalPayoutRequest): Promise<void> {
+  try {
+    const clean = sanitizeForFirestore(payout);
+    const ref = doc(db, RENTAL_PAYOUTS_COLLECTION, clean.id);
+    await setDoc(ref, clean, { merge: true });
+  } catch (error) {
+    console.error('Error saving rental payout to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update Rental Payout Request Status (e.g. transferido, rechazado)
+ */
+export async function updateRentalPayoutStatus(
+  payoutId: string,
+  status: 'procesando' | 'transferido' | 'rechazado',
+  processedAt?: string
+): Promise<void> {
+  try {
+    const ref = doc(db, RENTAL_PAYOUTS_COLLECTION, payoutId);
+    await updateDoc(ref, sanitizeForFirestore({
+      status,
+      processedAt: processedAt || new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error('Error updating rental payout status in Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Completely wipe ALL data from Firestore (Workers, Bookings, Banners, Rentals, and Reset App Config)
  */
 export async function clearAllFirestoreData(): Promise<void> {
   try {
@@ -559,6 +1026,13 @@ export async function clearAllFirestoreData(): Promise<void> {
     await clearCollection(SHOPS_COLLECTION);
     await clearCollection(REMISES_COLLECTION);
     await clearCollection(RIDE_REQUESTS_COLLECTION);
+    await clearCollection(COUPONS_COLLECTION);
+    await clearCollection(VOUCHERS_COLLECTION);
+    await clearCollection(JOB_PROFILES_COLLECTION);
+    await clearCollection(RENTALS_COLLECTION);
+    await clearCollection(RENTAL_BOOKINGS_COLLECTION);
+    await clearCollection(RENTAL_OWNERS_COLLECTION);
+    await clearCollection(RENTAL_PAYOUTS_COLLECTION);
 
     // Reset app config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
@@ -574,7 +1048,7 @@ export async function clearAllFirestoreData(): Promise<void> {
 }
 
 /**
- * Reset data to factory defaults (Reload initial mock workers, initial banners, initial shops, initial remises)
+ * Reset data to factory defaults (Reload initial mock workers, banners, shops, remises, coupons, job profiles, and rentals)
  */
 export async function resetFirestoreToDefaults(): Promise<void> {
   try {
@@ -584,6 +1058,13 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     await clearCollection(SHOPS_COLLECTION);
     await clearCollection(REMISES_COLLECTION);
     await clearCollection(RIDE_REQUESTS_COLLECTION);
+    await clearCollection(COUPONS_COLLECTION);
+    await clearCollection(VOUCHERS_COLLECTION);
+    await clearCollection(JOB_PROFILES_COLLECTION);
+    await clearCollection(RENTALS_COLLECTION);
+    await clearCollection(RENTAL_BOOKINGS_COLLECTION);
+    await clearCollection(RENTAL_OWNERS_COLLECTION);
+    await clearCollection(RENTAL_PAYOUTS_COLLECTION);
 
     // Seed workers
     const workerPromises = INITIAL_WORKERS.map((w) => setDoc(doc(db, WORKERS_COLLECTION, w.id), sanitizeForFirestore(w)));
@@ -601,6 +1082,18 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     const remisPromises = INITIAL_REMISES.map((r) => setDoc(doc(db, REMISES_COLLECTION, r.id), sanitizeForFirestore(r)));
     await Promise.all(remisPromises);
 
+    // Seed coupons
+    const couponPromises = INITIAL_COUPONS.map((c) => setDoc(doc(db, COUPONS_COLLECTION, c.id), sanitizeForFirestore(c)));
+    await Promise.all(couponPromises);
+
+    // Seed job profiles
+    const jobProfilePromises = INITIAL_JOB_PROFILES.map((p) => setDoc(doc(db, JOB_PROFILES_COLLECTION, p.id), sanitizeForFirestore(p)));
+    await Promise.all(jobProfilePromises);
+
+    // Seed rental items
+    const rentalPromises = INITIAL_RENTAL_ITEMS.map((item) => setDoc(doc(db, RENTALS_COLLECTION, item.id), sanitizeForFirestore(item)));
+    await Promise.all(rentalPromises);
+
     // Reset config
     const configDocRef = doc(db, APP_CONFIG_COLLECTION, 'settings');
     await setDoc(configDocRef, sanitizeForFirestore({
@@ -613,4 +1106,5 @@ export async function resetFirestoreToDefaults(): Promise<void> {
     throw error;
   }
 }
+
 

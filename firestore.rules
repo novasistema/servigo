@@ -36,6 +36,61 @@ service cloud.firestore {
     match /ride_requests/{requestId} {
       allow read, create, update, delete: if true;
     }
+
+    // Coupons created by administrator
+    match /coupons/{couponId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Issued Vouchers delivered by workers to clients
+    match /issued_vouchers/{voucherId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Users collection (Delivery customer and merchant profiles)
+    match /users/{userId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Merchants collection (Stores, restaurants, pharmacies)
+    match /merchants/{merchantId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Orders collection (Real-time orders for ServiGo Delivery module)
+    match /orders/{orderId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Job Profiles & CVs collection (Bolsa de Trabajo & RRHH)
+    match /job_profiles/{profileId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Rental Items collection (ServiGo Alquiler de Productos - Givy style)
+    match /rental_items/{itemId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Rental Bookings collection
+    match /rental_bookings/{bookingId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Rental Owners / Registered Locadores
+    match /rental_owners/{ownerId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Rental Wallets & Transactions
+    match /rental_wallets/{walletId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Rental Payout Requests (Retiros de Billetera a CBU/Alias)
+    match /rental_payouts/{payoutId} {
+      allow read, create, update, delete: if true;
+    }
   }
 }
 
