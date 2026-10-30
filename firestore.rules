@@ -210,9 +210,14 @@ service cloud.firestore {
         userId == request.auth.uid ||
         isAdmin()
       );
-      allow create, update: if isSignedIn() && (
-        userId == request.auth.uid ||
-        isAdmin()
+      // El usuario no puede ponerse ni sacarse el bloqueo (lo maneja el servidor)
+      allow create: if isAdmin() || (
+        isSignedIn() && userId == request.auth.uid &&
+        !request.resource.data.keys().hasAny(['blocked', 'blockedReason', 'blockedAt'])
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() && userId == request.auth.uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['blocked', 'blockedReason', 'blockedAt'])
       );
       allow delete: if isAdmin();
     }
