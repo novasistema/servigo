@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { RentalItem, RentalCategory, RentalItemCondition, RentalOwner } from '../../types';
 import { RENTAL_CATEGORIES } from '../../data/mockRentals';
+import { useAuth } from '../../context/AuthContext';
 
 interface PublishRentalModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
   onSaveRentalItem,
   showToast,
 }) => {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Stepper: 1: Datos del Dueño (Registro), 2: Datos del Producto & Fotos
@@ -161,15 +163,17 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
       .map((a) => a.trim())
       .filter(Boolean);
 
-    const ownerId = `owner-${Date.now()}`;
+    const ownerId = user?.uid || `owner-${Date.now()}`;
 
-    const newOwner: RentalOwner = {
+    const newOwner: any = {
       id: ownerId,
+      ownerUid: user?.uid || ownerId,
+      createdBy: user?.uid || ownerId,
       name: ownerName.trim(),
       dni: ownerDni.trim(),
       phone: ownerPhone.trim(),
       whatsapp: ownerWhatsapp.trim() || ownerPhone.trim().replace(/\D/g, ''),
-      email: ownerEmail.trim() || undefined,
+      email: ownerEmail.trim() || user?.email || undefined,
       location: ownerLocation.trim() || 'Alejandro Roca',
       address: ownerAddress.trim() || undefined,
       payoutInfo: {
@@ -177,15 +181,14 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
         bankOrMp: bankOrMp.trim() || 'Mercado Pago',
         accountHolderName: ownerName.trim(),
       },
-      walletBalance: 0,
-      pendingBalance: 0,
-      totalEarned: 0,
       registeredAt: new Date().toISOString(),
     };
 
     const newItem: RentalItem = {
       id: `rent-${Date.now()}`,
       ownerId,
+      ownerUid: user?.uid || ownerId,
+      createdBy: user?.uid || ownerId,
       title: title.trim(),
       category,
       categoryLabel,

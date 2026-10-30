@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { TabVisibilityConfig } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   Wrench,
   Search,
@@ -19,9 +21,11 @@ import {
   Pizza,
   Clock,
   Briefcase,
-  RotateCcw
+  RotateCcw,
+  LogIn,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
-import { TabVisibilityConfig } from '../types';
 import servigoOfficialLogo from '../assets/images/servigo_official_logo_1785771884278.jpg';
 import servigoDeliveryLogoImg from '../assets/images/servigo_delivery_logo.jpg';
 
@@ -58,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPublishRental,
   isAdminAuthenticated = false,
 }) => {
+  const { currentUser, openAuthModal, logout } = useAuth();
   const [logoError, setLogoError] = React.useState(false);
 
   const isDeliveryActive = activeTab === 'delivery';
@@ -77,6 +82,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action triggers in top strip */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* User Auth Quick Button */}
+          {currentUser ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/60 border border-orange-400/30">
+              <span className="text-[10px] font-bold text-white truncate max-w-[100px] sm:max-w-[140px]" title={currentUser.email || currentUser.displayName || ''}>
+                👤 {currentUser.displayName || currentUser.email?.split('@')[0]}
+              </span>
+              <button
+                onClick={() => logout()}
+                className="p-0.5 rounded-full hover:bg-orange-800 text-orange-200 hover:text-white transition-colors cursor-pointer"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => openAuthModal('Inicia sesión para gestionar tus publicaciones, reservas y billetera.')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-950 text-white hover:bg-slate-900 font-black text-[10px] transition-all shadow-xs cursor-pointer border border-slate-700 active:scale-95"
+            >
+              <LogIn className="w-3 h-3 text-orange-400" />
+              <span>Ingresar</span>
+            </button>
+          )}
           {onOpenWelcomeHub && (
             <button
               onClick={onOpenWelcomeHub}

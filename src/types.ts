@@ -178,6 +178,9 @@ export interface AppConfig {
   ferreteroPartnerTitle?: string;
   ferreteroPartnerDiscountText?: string;
   customTrades?: CustomTradeOption[];
+  rentals?: {
+    platformFeeRate: number; // e.g. 0.05
+  };
   updatedAt: string;
 }
 
@@ -491,6 +494,8 @@ export type RentalItemCondition = 'nuevo' | 'excelente' | 'muy_bueno' | 'bueno';
 
 export interface RentalOwner {
   id: string;
+  ownerUid?: string;
+  createdBy?: string;
   name: string;
   dni: string;
   phone: string;
@@ -507,11 +512,16 @@ export interface RentalOwner {
   pendingBalance: number; // Saldo retenido por alquileres en curso (ARS)
   totalEarned: number; // Histórico ganado (ARS)
   registeredAt: string;
+  mpConnected?: boolean;
+  mpUserId?: string | number;
+  mpLinkedAt?: string;
 }
 
 export interface RentalItem {
   id: string;
   ownerId?: string;
+  ownerUid?: string;
+  createdBy?: string;
   title: string;
   category: RentalCategory;
   categoryLabel: string;
@@ -542,8 +552,8 @@ export interface RentalItem {
 }
 
 export type RentalBookingStatus = 'pendiente' | 'confirmado' | 'en_curso' | 'devuelto' | 'cancelado';
-export type RentalPaymentStatus = 'pendiente_pago' | 'pagado_en_custodia' | 'liquidado_a_dueno' | 'reembolsado';
-export type RentalDepositStatus = 'en_custodia' | 'devuelto_a_cliente' | 'retenido_por_dano';
+export type RentalPaymentStatus = 'pendiente_pago' | 'pagado' | 'pagado_en_custodia' | 'liquidado_a_dueno' | 'reembolsado';
+export type RentalDepositStatus = 'pendiente' | 'en_custodia' | 'devuelto_a_cliente' | 'retenido_por_dano';
 
 export interface DamageReport {
   reportedAt: string;
@@ -561,6 +571,9 @@ export interface RentalBooking {
   rentalItemImage: string;
   dailyPrice: number;
   ownerId?: string;
+  ownerUid?: string;
+  clientUid?: string;
+  createdBy?: string;
   ownerName: string;
   ownerPhone: string;
   ownerWhatsapp: string;
@@ -573,9 +586,9 @@ export interface RentalBooking {
   endDate: string;
   totalDays: number;
   rentalSubtotal: number; // Costo bruto del alquiler (ARS)
-  platformFeeRate: number; // Tasa de comisión ServiGo (ej: 0.10 = 10%)
+  platformFeeRate: number; // Tasa de comisión ServiGo (ej: 0.05 = 5%)
   platformFeeAmount: number; // Comisión retenida por ServiGo (ARS)
-  ownerNetAmount: number; // Ganancia neta para el dueño (ARS, 90%)
+  ownerNetAmount: number; // Ganancia neta para el dueño (ARS)
   depositAmount: number; // Garantía en custodia reembolsable (ARS)
   totalPrice: number; // Total a pagar por el cliente = rentalSubtotal + depositAmount
   deliveryMethod: 'retiro_dueno' | 'envio_cadete';
@@ -584,6 +597,10 @@ export interface RentalBooking {
   status: RentalBookingStatus;
   paymentStatus: RentalPaymentStatus;
   depositStatus: RentalDepositStatus;
+  mpRentalPreferenceId?: string;
+  mpDepositPreferenceId?: string;
+  mpPaymentId?: string | number;
+  mpDepositPaymentId?: string | number;
   contractAccepted?: boolean;
   contractAcceptedAt?: string;
   contractSignerDni?: string;
@@ -596,6 +613,8 @@ export interface RentalBooking {
 export interface RentalPayoutRequest {
   id: string;
   ownerId: string;
+  ownerUid?: string;
+  createdBy?: string;
   ownerName: string;
   ownerPhone: string;
   ownerDni?: string;

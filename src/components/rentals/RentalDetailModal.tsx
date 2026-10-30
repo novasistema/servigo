@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -7,24 +7,26 @@ import {
   Clock,
   MapPin,
   Phone,
-  MessageCircle,
   Truck,
   FileText,
   Sparkles,
   Info,
   DollarSign,
   AlertCircle,
-  Share2
+  Share2,
+  CreditCard,
+  Lock
 } from 'lucide-react';
 import { RentalItem, RentalBooking } from '../../types';
 import { RentalAgreementModal } from './RentalAgreementModal';
 import { RentalTermsAndConditions } from './RentalTermsAndConditions';
+import { useAuth } from '../../context/AuthContext';
 
 interface RentalDetailModalProps {
   item: RentalItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onBookRental: (booking: RentalBooking) => Promise<void>;
+  onBookRental?: (booking: RentalBooking) => Promise<void>;
   onOpenContract: (item: RentalItem) => void;
   showToast: (msg: string) => void;
 }
@@ -33,11 +35,12 @@ export const RentalDetailModal: React.FC<RentalDetailModalProps> = ({
   item,
   isOpen,
   onClose,
-  onBookRental,
   onOpenContract,
   showToast,
 }) => {
   if (!isOpen || !item) return null;
+
+  const { user, openAuthModal } = useAuth();
 
   // Selected image index
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(0);
@@ -51,7 +54,7 @@ export const RentalDetailModal: React.FC<RentalDetailModalProps> = ({
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [endDate, setEndDate] = useState<string>(tomorrowStr);
   const [deliveryMethod, setDeliveryMethod] = useState<'retiro_dueno' | 'envio_cadete'>('retiro_dueno');
-  const [clientName, setClientName] = useState<string>('');
+  const [clientName, setClientName] = useState<string>(user?.displayName || '');
   const [clientPhone, setClientPhone] = useState<string>('');
   const [clientAddress, setClientAddress] = useState<string>('');
   const [clientDni, setClientDni] = useState<string>('');
@@ -61,15 +64,38 @@ export const RentalDetailModal: React.FC<RentalDetailModalProps> = ({
   const [isContractModalOpen, setIsContractModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // MP status & configurable platform fee
+  const [mpConfigured, setMpConfigured] = useState<boolean | null>(null);
+  const [platformFeeRate, setPlatformFeeRate] = useState<number>(0.05);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/rentals/mp-status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        setMpConfigured(Boolean(data.mpConfigured));
+        if (typeof data.platformFeeRate === 'number') {
+          setPlatformFeeRate(data.platformFeeRate);
+        }
+      })
+      .catch((err) => {
+        console.warn('Error fetching MP status:', err);
+        if (isMounted) setMpConfigured(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Calculate rental duration in days
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffTime = Math.max(0, end.getTime() - start.getTime());
   const calculatedDays = Math.max(item.minRentalDays || 1, Math.round(diffTime / (1000 * 60 * 60 * 24)) || 1);
 
-  // Calculate prices
+  // Calculate prices for client preview (authoritative amounts computed exclusively by the server)
   const baseSubtotal = calculatedDays * item.dailyPrice;
-  // If >= 7 days and weeklyPrice is set, calculate weekly discount
   let rentalSubtotal = baseSubtotal;
   let hasDiscount = false;
   if (calculatedDays >= 7 && item.weeklyPrice) {
@@ -92,66 +118,17 @@ export const RentalDetailModal: React.FC<RentalDetailModalProps> = ({
 
   const conditionMeta = conditionLabels[item.condition] || { label: item.condition, color: 'bg-slate-100 text-slate-800 border-slate-300' };
 
-  // Generate WhatsApp message
-  const generateWhatsAppMessage = () => {
-    const deliveryText = deliveryMethod === 'envio_cadete'
-      ? `🛵 Envío a domicilio con cadete ServiGo (${clientAddress || 'A coordinar'})`
-      : '🏠 Retiro por tu domicilio';
-
-    const msg = `¡Hola ${item.ownerName}! Vi tu publicación en *ServiGo Alquiler de Productos* y solicito alquilar tu:
-📦 *${item.title}*
-
-📅 *Período de Alquiler:*
-• Desde: ${startDate}
-• Hasta: ${endDate} (${calculatedDays} día${calculatedDays > 1 ? 's' : ''})
-• Método de Entrega: ${deliveryText}
-
-💰 *Cotización Estimada:*
-• Alquiler: $${rentalSubtotal.toLocaleString('es-AR')}
-• Depósito de Garantía en Custodia: $${deposit.toLocaleString('es-AR')}
-• Total Estimado: $${estimatedTotal.toLocaleString('es-AR')}
-
-👤 *Datos del Locatario:*
-• Nombre: ${clientName || 'Cliente'}
-• Teléfono: ${clientPhone || 'No especificado'}
-• DNI: ${clientDni || 'No especificado'}
-${notes ? `• Nota: ${notes}` : ''}
-
-✍️ *Contrato Vinculante Aceptado:*
-He leído y aceptado el *Contrato de Locación de ServiGo*. Asumo la responsabilidad civil por el cuidado del producto y me comprometo al pago de la reparación o reposición a nuevo ante cualquier daño o extravío, autorizando la retención de la garantía.
-
-¿Coordinamos la entrega? ¡Muchas gracias!`;
-
-    return encodeURIComponent(msg);
-  };
-
-  const handleWhatsAppBooking = () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
-      showToast('Por favor ingresa tu nombre y teléfono de contacto');
-      return;
-    }
-
-    if (!clientDni.trim()) {
-      showToast('Por favor ingresa tu DNI para la validez legal del contrato');
-      return;
-    }
-
-    if (!isContractAccepted) {
-      setShowTermsError(true);
-      showToast('Debes marcar el checkbox obligatorio de Términos y Condiciones de Alquiler');
-      return;
-    }
-
-    const cleanNumber = item.ownerWhatsapp.replace(/\D/g, '');
-    const url = `https://wa.me/${cleanNumber}?text=${generateWhatsAppMessage()}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    showToast('¡Redirigiendo a WhatsApp del dueño con los términos aceptados!');
-  };
-
   const handleConfirmAppBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      showToast('Por favor inicia sesión para continuar con la reserva');
+      openAuthModal();
+      return;
+    }
+
     if (!clientName.trim() || !clientPhone.trim()) {
-      showToast('Por favor completa tu nombre y teléfono');
+      showToast('Por favor completa tu nombre y teléfono de contacto');
       return;
     }
 
@@ -171,55 +148,51 @@ He leído y aceptado el *Contrato de Locación de ServiGo*. Asumo la responsabil
       return;
     }
 
+    if (mpConfigured === false) {
+      showToast('Pagos no configurados en el servidor.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const platformFeeAmount = Math.round(rentalSubtotal * 0.10);
-      const ownerNetAmount = rentalSubtotal - platformFeeAmount;
-      const totalToPay = rentalSubtotal + deposit;
+      const idToken = await user.getIdToken();
+      // El cliente NUNCA envía montos: el servidor lee el precio del rental_item y calcula todo
+      const resp = await fetch('/api/rentals/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          rentalItemId: item.id,
+          startDate,
+          endDate,
+          deliveryMethod,
+          deliveryAddress: deliveryMethod === 'envio_cadete' ? clientAddress.trim() : undefined,
+          notes: notes.trim() || undefined,
+          clientName: clientName.trim(),
+          clientPhone: clientPhone.trim(),
+          clientDni: clientDni.trim(),
+          contractAccepted: true,
+        }),
+      });
 
-      const newBooking: RentalBooking = {
-        id: `rent-book-${Date.now()}`,
-        rentalItemId: item.id,
-        rentalItemTitle: item.title,
-        rentalItemImage: item.images[0] || '',
-        dailyPrice: item.dailyPrice,
-        ownerId: item.ownerId,
-        ownerName: item.ownerName,
-        ownerPhone: item.ownerPhone,
-        ownerWhatsapp: item.ownerWhatsapp,
-        ownerCbuOrAlias: item.ownerCbuOrAlias,
-        clientName: clientName.trim(),
-        clientPhone: clientPhone.trim(),
-        clientWhatsapp: clientPhone.trim(),
-        clientDni: clientDni.trim(),
-        startDate,
-        endDate,
-        totalDays: calculatedDays,
-        rentalSubtotal,
-        platformFeeRate: 0.10,
-        platformFeeAmount,
-        ownerNetAmount,
-        depositAmount: deposit,
-        totalPrice: totalToPay,
-        deliveryMethod,
-        deliveryAddress: deliveryMethod === 'envio_cadete' ? clientAddress.trim() : undefined,
-        notes: notes.trim() || undefined,
-        status: 'pendiente',
-        paymentStatus: 'pagado_en_custodia',
-        depositStatus: 'en_custodia',
-        contractAccepted: true,
-        contractAcceptedAt: new Date().toISOString(),
-        contractSignerDni: clientDni.trim(),
-        contractSignerName: clientName.trim(),
-        createdAt: new Date().toISOString(),
-      };
+      const data = await resp.json();
 
-      await onBookRental(newBooking);
-      showToast('¡Solicitud registrada con contrato firmado en ServiGo! El dueño y la garantía quedan asegurados.');
-      onClose();
-    } catch (err) {
-      console.error(err);
-      showToast('Hubo un error al registrar la reserva. Intenta por WhatsApp.');
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || data.message || 'Error al procesar el pago.');
+      }
+
+      showToast('¡Reserva creada! Redirigiendo a Mercado Pago para abonar...');
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        showToast('Reserva registrada en estado pendiente de pago.');
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Error al procesar checkout:', err);
+      showToast(err.message || 'Hubo un error al iniciar el checkout con Mercado Pago.');
     } finally {
       setIsSubmitting(false);
     }
@@ -480,12 +453,12 @@ He leído y aceptado el *Contrato de Locación de ServiGo*. Asumo la responsabil
                     </div>
                   )}
                   <div className="flex justify-between text-slate-400 text-[11px]">
-                    <span>• Tasa de Servicio & Protección ServiGo (10%):</span>
-                    <span className="text-orange-400 font-semibold">${Math.round(rentalSubtotal * 0.10).toLocaleString('es-AR')}</span>
+                    <span>• Tasa de Servicio & Plataforma ({Math.round(platformFeeRate * 100)}%):</span>
+                    <span className="text-orange-400 font-semibold">${Math.round(rentalSubtotal * platformFeeRate).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-slate-400 text-[11px]">
-                    <span>• Neto al Propietario (90%):</span>
-                    <span className="text-emerald-400 font-semibold">${Math.round(rentalSubtotal * 0.90).toLocaleString('es-AR')}</span>
+                    <span>• Neto al Propietario ({Math.round((1 - platformFeeRate) * 100)}%):</span>
+                    <span className="text-emerald-400 font-semibold">${Math.round(rentalSubtotal * (1 - platformFeeRate)).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-slate-300 pt-1 border-t border-slate-800/80">
                     <span>Garantía en Custodia Reembolsable:</span>
@@ -573,25 +546,27 @@ He leído y aceptado el *Contrato de Locación de ServiGo*. Asumo la responsabil
                   />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="pt-2 flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={handleWhatsAppBooking}
-                    className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 cursor-pointer active:scale-98"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Alquilar por WhatsApp</span>
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-3 px-4 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-600/30 cursor-pointer disabled:opacity-50 active:scale-98"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isSubmitting ? 'Registrando...' : 'Reservar en la App'}</span>
-                  </button>
+                {/* Action Buttons: Mercado Pago or Not Configured */}
+                <div className="pt-2">
+                  {mpConfigured === false ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3 px-4 rounded-2xl bg-slate-800 text-slate-400 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-700 cursor-not-allowed"
+                    >
+                      <AlertCircle className="w-4 h-4 text-amber-400" />
+                      <span>Pagos no configurados</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 px-4 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-600/30 cursor-pointer disabled:opacity-50 active:scale-98"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span>{isSubmitting ? 'Procesando en Mercado Pago...' : `Pagar con Mercado Pago ($${estimatedTotal.toLocaleString('es-AR')})`}</span>
+                    </button>
+                  )}
                 </div>
               </form>
             </div>

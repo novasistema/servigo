@@ -1,7 +1,31 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import { initializeApp, getApps, getApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+// Read Firebase config
+const firebaseConfig = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf-8')
+);
+
+// Initialize Firebase Admin SDK
+const adminApp = getApps().length > 0
+  ? getApp()
+  : initializeApp({
+      projectId: firebaseConfig.projectId,
+    });
+
+const adminDb = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+  ? getFirestore(adminApp, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(adminApp);
+
+const adminAuth = getAuth(adminApp);
 
 async function startServer() {
   const app = express();
@@ -371,6 +395,767 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       };
 
       return res.json({ success: true, cvData: fallbackCv });
+    }
+  });
+
+  // =========================================================================
+  // SECURE TRANSACTIONS & ESCROW ENDPOINTS (Firebase Admin SDK)
+  // =========================================================================
+  const ADMIN_EMAILS = ['ajnovasistemas@gmail.com'];
+
+  const authenticateFirebaseUser = async (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No autorizado: Token de autenticación ausente.' });
+    }
+
+    const token = authHeader.split('Bearer ')[1].trim();
+    try {
+      const decoded = await adminAuth.verifyIdToken(token);
+      (req as any).user = decoded;
+      next();
+    } catch (err: any) {
+      console.error('Error de verificación de ID Token:', err.message);
+      return res.status(401).json({ error: 'Token de autenticación inválido o expirado.' });
+    }
+  };
+
+  const isUserAdmin = (user: any): boolean => {
+    return Boolean(user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  };
+
+  // =========================================================================
+  // MERCADO PAGO MARKETPLACE INTEGRATION
+  // =========================================================================
+  const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
+  const MP_CLIENT_ID = process.env.MP_CLIENT_ID || '';
+  const MP_CLIENT_SECRET = process.env.MP_CLIENT_SECRET || '';
+  const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || '';
+  const APP_URL = process.env.APP_URL || '';
+
+  const isMpConfigured = Boolean(MP_ACCESS_TOKEN);
+  const mpPlatformClient = isMpConfigured ? new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN }) : null;
+
+  // Endpoint: Consultar estado de configuración de pagos y tasa de comisión
+  app.get('/api/rentals/mp-status', async (_req, res) => {
+    let platformFeeRate = 0.05;
+    try {
+      const configSnap = await adminDb.collection('app_config').doc('rentals').get();
+      if (configSnap.exists && typeof configSnap.data()?.platformFeeRate === 'number') {
+        platformFeeRate = configSnap.data()?.platformFeeRate;
+      }
+    } catch (e) {
+      // Fallback
+    }
+
+    return res.json({
+      mpConfigured: isMpConfigured,
+      hasClientId: Boolean(MP_CLIENT_ID),
+      platformFeeRate,
+    });
+  });
+
+  // a) OAuth: Iniciar vinculación de cuenta de Mercado Pago para locadores
+  app.get('/api/mp/connect', authenticateFirebaseUser, (req, res) => {
+    const user = (req as any).user;
+    if (!MP_CLIENT_ID) {
+      return res.status(400).json({ error: 'Mercado Pago Client ID no está configurado.' });
+    }
+
+    const baseUrl = APP_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectUri = `${baseUrl}/api/mp/oauth/callback`;
+    const authUrl = `https://auth.mercadopago.com/authorization?client_id=${MP_CLIENT_ID}&response_type=code&platform_id=mp&state=${encodeURIComponent(user.uid)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    return res.json({ success: true, url: authUrl });
+  });
+
+  // a) OAuth Callback: Recibe código y guarda access_token SOLO en rental_owner_secrets
+  app.get('/api/mp/oauth/callback', async (req, res) => {
+    try {
+      const code = req.query.code as string;
+      const ownerUid = req.query.state as string;
+
+      if (!code || !ownerUid) {
+        return res.status(400).send('Parámetros de autorización faltantes (código o estado).');
+      }
+
+      if (!MP_CLIENT_SECRET || !MP_CLIENT_ID) {
+        return res.status(500).send('Credenciales de Mercado Pago incompletas en el servidor.');
+      }
+
+      const baseUrl = APP_URL || `${req.protocol}://${req.get('host')}`;
+      const redirectUri = `${baseUrl}/api/mp/oauth/callback`;
+
+      const tokenResponse = await fetch('https://api.mercadopago.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_secret: MP_CLIENT_SECRET,
+          client_id: MP_CLIENT_ID,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errText = await tokenResponse.text();
+        console.error('Error al intercambiar código OAuth de MP:', errText);
+        return res.status(502).send(`Error al vincular cuenta con Mercado Pago: ${errText}`);
+      }
+
+      const tokenData = (await tokenResponse.json()) as any;
+
+      // Guardar access token de forma estrictamente privada en rental_owner_secrets
+      await adminDb.collection('rental_owner_secrets').doc(ownerUid).set({
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        publicKey: tokenData.public_key,
+        mpUserId: tokenData.user_id,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      // Marcar al locador como conectado
+      await adminDb.collection('rental_owners').doc(ownerUid).set({
+        mpConnected: true,
+        mpUserId: tokenData.user_id,
+        mpLinkedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      return res.redirect(`${baseUrl}/?tab=rentals&mp_connected=true`);
+    } catch (err: any) {
+      console.error('Error en /api/mp/oauth/callback:', err);
+      return res.status(500).send('Error interno procesando vinculación con Mercado Pago.');
+    }
+  });
+
+  // b) Checkout: Crea reserva en estado pendiente_pago y preferencia de Mercado Pago Marketplace
+  app.post('/api/rentals/checkout', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const {
+        rentalItemId,
+        startDate,
+        endDate,
+        deliveryMethod = 'retiro_dueno',
+        deliveryAddress = '',
+        notes = '',
+        clientName = '',
+        clientPhone = '',
+        clientDni = '',
+        contractAccepted = false,
+      } = req.body;
+
+      if (!rentalItemId || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Faltan parámetros requeridos (rentalItemId, startDate, endDate).' });
+      }
+
+      if (!clientName.trim() || !clientPhone.trim() || !clientDni.trim()) {
+        return res.status(400).json({ error: 'Faltan los datos obligatorios del cliente (nombre, teléfono y DNI).' });
+      }
+
+      if (!contractAccepted) {
+        return res.status(400).json({ error: 'Debes aceptar los Términos y Condiciones del Contrato de Alquiler.' });
+      }
+
+      // Si Mercado Pago no está configurado, informar explícitamente sin simular pago
+      if (!isMpConfigured) {
+        return res.status(400).json({
+          error: 'Pagos no configurados',
+          mpConfigured: false,
+          message: 'El procesador de pagos de Mercado Pago no está configurado en las variables de entorno.',
+        });
+      }
+
+      // 1. Leer rental_item en Firestore autoritativamente (el cliente NUNCA envía montos)
+      const itemRef = adminDb.collection('rental_items').doc(rentalItemId);
+      const itemSnap = await itemRef.get();
+      if (!itemSnap.exists) {
+        return res.status(404).json({ error: 'El producto a alquilar no existe en el catálogo.' });
+      }
+
+      const item = itemSnap.data() as any;
+      const dailyPrice = Number(item.dailyPrice) || 0;
+      const depositAmount = Number(item.depositAmount) || 0;
+      const weeklyPrice = item.weeklyPrice ? Number(item.weeklyPrice) : undefined;
+      const ownerId = item.ownerUid || item.ownerId || '';
+      const ownerName = item.ownerName || 'Locador';
+      const ownerPhone = item.ownerPhone || '';
+      const ownerWhatsapp = item.ownerWhatsapp || ownerPhone;
+
+      // 2. Calcular días de forma canónica
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.max(0, end.getTime() - start.getTime());
+      const totalDays = Math.max(item.minRentalDays || 1, Math.round(diffTime / (1000 * 60 * 60 * 24)) || 1);
+
+      // 3. Calcular subtotal de alquiler
+      const baseSubtotal = totalDays * dailyPrice;
+      let rentalSubtotal = baseSubtotal;
+      if (totalDays >= 7 && weeklyPrice) {
+        const fullWeeks = Math.floor(totalDays / 7);
+        const extraDays = totalDays % 7;
+        rentalSubtotal = (fullWeeks * weeklyPrice) + (extraDays * dailyPrice);
+      }
+
+      // 4. Leer platformFeeRate de app_config/rentals (default 0.05)
+      let platformFeeRate = 0.05;
+      try {
+        const configSnap = await adminDb.collection('app_config').doc('rentals').get();
+        if (configSnap.exists && typeof configSnap.data()?.platformFeeRate === 'number') {
+          platformFeeRate = configSnap.data()?.platformFeeRate;
+        }
+      } catch (err) {
+        // Fallback default 0.05
+      }
+
+      const platformFeeAmount = Math.round(rentalSubtotal * platformFeeRate);
+      const ownerNetAmount = rentalSubtotal - platformFeeAmount;
+      const totalPrice = rentalSubtotal + depositAmount;
+
+      const bookingId = `rent-book-${Date.now()}`;
+      const baseUrl = APP_URL || `${req.protocol}://${req.get('host')}`;
+
+      // 5. Consultar access token del dueño desde la colección privada rental_owner_secrets
+      const secretSnap = await adminDb.collection('rental_owner_secrets').doc(ownerId).get();
+      const ownerAccessToken = secretSnap.exists ? secretSnap.data()?.accessToken : null;
+
+      // Crear preferencia en MP con el token del dueño (o de la plataforma en fallback) con marketplace_fee
+      const tokenForPreference = ownerAccessToken || MP_ACCESS_TOKEN;
+      const preferenceClient = new Preference(new MercadoPagoConfig({ accessToken: tokenForPreference }));
+
+      const prefResult = await preferenceClient.create({
+        body: {
+          items: [
+            {
+              id: item.id,
+              title: `Alquiler: ${item.title} (${totalDays} día${totalDays > 1 ? 's' : ''})`,
+              unit_price: rentalSubtotal,
+              quantity: 1,
+              currency_id: 'ARS',
+            },
+          ],
+          marketplace_fee: platformFeeAmount,
+          external_reference: bookingId,
+          notification_url: `${baseUrl}/api/mp/webhook`,
+          back_urls: {
+            success: `${baseUrl}/?tab=rentals&booking_status=confirmado&booking_id=${bookingId}`,
+            pending: `${baseUrl}/?tab=rentals&booking_status=pendiente&booking_id=${bookingId}`,
+            failure: `${baseUrl}/?tab=rentals&booking_status=fallido&booking_id=${bookingId}`,
+          },
+          auto_return: 'approved',
+        },
+      });
+
+      // 6. Depósito de garantía en custodia: cobrado como pago aparte a la cuenta de la plataforma
+      let depositInitPoint: string | undefined = undefined;
+      let depositPrefId: string | undefined = undefined;
+
+      if (depositAmount > 0) {
+        const platformPrefClient = new Preference(new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN }));
+        const depositPref = await platformPrefClient.create({
+          body: {
+            items: [
+              {
+                id: `deposit-${bookingId}`,
+                title: `Garantía Reembolsable en Custodia: ${item.title}`,
+                unit_price: depositAmount,
+                quantity: 1,
+                currency_id: 'ARS',
+              },
+            ],
+            external_reference: `deposit_${bookingId}`,
+            notification_url: `${baseUrl}/api/mp/webhook`,
+            back_urls: {
+              success: `${baseUrl}/?tab=rentals&deposit_status=custodiada&booking_id=${bookingId}`,
+              pending: `${baseUrl}/?tab=rentals&deposit_status=pendiente&booking_id=${bookingId}`,
+              failure: `${baseUrl}/?tab=rentals&deposit_status=fallida&booking_id=${bookingId}`,
+            },
+            auto_return: 'approved',
+          },
+        });
+        depositInitPoint = depositPref.init_point || depositPref.sandbox_init_point;
+        depositPrefId = depositPref.id;
+      }
+
+      // 7. Crear reserva en Firestore con estado pendiente_pago
+      const bookingDoc = {
+        id: bookingId,
+        rentalItemId: item.id,
+        rentalItemTitle: item.title,
+        rentalItemImage: (item.images && item.images[0]) || '',
+        dailyPrice,
+        ownerId,
+        ownerUid: ownerId,
+        clientUid: user.uid,
+        createdBy: user.uid,
+        ownerName,
+        ownerPhone,
+        ownerWhatsapp,
+        ownerCbuOrAlias: item.ownerCbuOrAlias || '',
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        clientWhatsapp: clientPhone.trim(),
+        clientDni: clientDni.trim(),
+        startDate,
+        endDate,
+        totalDays,
+        rentalSubtotal,
+        platformFeeRate,
+        platformFeeAmount,
+        ownerNetAmount,
+        depositAmount,
+        totalPrice,
+        deliveryMethod,
+        deliveryAddress: deliveryMethod === 'envio_cadete' ? deliveryAddress.trim() : '',
+        notes: notes.trim(),
+        status: 'pendiente',
+        paymentStatus: 'pendiente_pago',
+        depositStatus: depositAmount > 0 ? 'pendiente' : 'en_custodia',
+        mpRentalPreferenceId: prefResult.id,
+        mpDepositPreferenceId: depositPrefId || null,
+        contractAccepted: true,
+        contractAcceptedAt: new Date().toISOString(),
+        contractSignerDni: clientDni.trim(),
+        contractSignerName: clientName.trim(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await adminDb.collection('rental_bookings').doc(bookingId).set(bookingDoc);
+
+      return res.json({
+        success: true,
+        bookingId,
+        init_point: prefResult.init_point || prefResult.sandbox_init_point,
+        deposit_init_point: depositInitPoint,
+        rentalSubtotal,
+        platformFeeRate,
+        platformFeeAmount,
+        ownerNetAmount,
+        depositAmount,
+        totalPrice,
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/checkout:', err);
+      return res.status(500).json({ error: err.message || 'Error al procesar el checkout de alquiler.' });
+    }
+  });
+
+  // c) Webhook: Valida firma, consulta el pago a la API de MP y SOLO si está approved pasa la reserva a confirmado / paymentStatus pagado
+  app.post('/api/mp/webhook', async (req, res) => {
+    try {
+      const xSignature = req.headers['x-signature'] as string | undefined;
+      const xRequestId = req.headers['x-request-id'] as string | undefined;
+
+      // Validación de firma del webhook
+      if (MP_WEBHOOK_SECRET && xSignature && xRequestId) {
+        const parts = xSignature.split(',');
+        let ts = '';
+        let hash = '';
+        for (const part of parts) {
+          const [key, val] = part.split('=');
+          if (key.trim() === 'ts') ts = val.trim();
+          if (key.trim() === 'v1') hash = val.trim();
+        }
+        const dataId = req.query['data.id'] || req.body?.data?.id;
+        if (ts && hash && dataId) {
+          const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+          const expectedHash = crypto
+            .createHmac('sha256', MP_WEBHOOK_SECRET)
+            .update(manifest)
+            .digest('hex');
+          if (expectedHash !== hash) {
+            console.warn('Advertencia: Discrepancia en firma de webhook Mercado Pago.');
+          }
+        }
+      }
+
+      const paymentId = req.body?.data?.id || req.query['data.id'] || req.body?.id;
+      if (!paymentId || !isMpConfigured) {
+        return res.sendStatus(200);
+      }
+
+      // Consultar pago a la API oficial de Mercado Pago
+      const paymentClient = new Payment(mpPlatformClient!);
+      let paymentData: any;
+      try {
+        paymentData = await paymentClient.get({ id: String(paymentId) });
+      } catch (err: any) {
+        console.warn('No se pudo consultar el pago de MP (puede ser notificación ajena):', err.message);
+        return res.sendStatus(200);
+      }
+
+      // SOLO si el pago está aprobado se actualiza la reserva
+      if (paymentData && paymentData.status === 'approved') {
+        const extRef = String(paymentData.external_reference || '');
+
+        if (extRef.startsWith('deposit_')) {
+          const bookingId = extRef.replace('deposit_', '');
+          const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+          const snap = await bookingRef.get();
+          if (snap.exists) {
+            await bookingRef.update({
+              depositStatus: 'en_custodia',
+              mpDepositPaymentId: paymentData.id,
+              depositPaidAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        } else if (extRef) {
+          const bookingId = extRef;
+          const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+          const snap = await bookingRef.get();
+          if (snap.exists) {
+            const booking = snap.data() as any;
+            await bookingRef.update({
+              status: 'confirmado',
+              paymentStatus: 'pagado',
+              mpPaymentId: paymentData.id,
+              paidAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+
+            // Acreditar monto en pendingBalance de la billetera del locador
+            const ownerId = booking.ownerUid || booking.ownerId;
+            if (ownerId) {
+              const ownerRef = adminDb.collection('rental_owners').doc(ownerId);
+              const ownerSnap = await ownerRef.get();
+              if (ownerSnap.exists) {
+                await ownerRef.update({
+                  pendingBalance: FieldValue.increment(Number(booking.ownerNetAmount) || 0),
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return res.sendStatus(200);
+    } catch (err: any) {
+      console.error('Error en webhook de Mercado Pago:', err);
+      return res.sendStatus(200);
+    }
+  });
+
+  // d) Reembolso de depósito de garantía vía API oficial de Mercado Pago
+  app.post('/api/rentals/refund-deposit', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { bookingId } = req.body;
+      const user = (req as any).user;
+
+      if (!bookingId) {
+        return res.status(400).json({ error: 'Falta bookingId de la reserva.' });
+      }
+
+      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+      const snap = await bookingRef.get();
+      if (!snap.exists) {
+        return res.status(404).json({ error: 'Reserva no encontrada.' });
+      }
+
+      const booking = snap.data() as any;
+      const isOwner = user.uid === booking.ownerUid || user.uid === booking.ownerId;
+      const isAdminUser = isUserAdmin(user);
+
+      if (!isOwner && !isAdminUser) {
+        return res.status(403).json({ error: 'No tienes permisos para reembolsar la garantía de este alquiler.' });
+      }
+
+      if (booking.depositStatus === 'devuelto_a_cliente') {
+        return res.json({ success: true, message: 'La garantía ya fue devuelta previamente.' });
+      }
+
+      // Reembolso vía API de Mercado Pago si existe el ID de pago de la garantía
+      if (booking.mpDepositPaymentId && isMpConfigured) {
+        try {
+          const refundResp = await fetch(`https://api.mercadopago.com/v1/payments/${booking.mpDepositPaymentId}/refunds`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (!refundResp.ok) {
+            const errTxt = await refundResp.text();
+            console.warn('Advertencia al solicitar reembolso en MP:', errTxt);
+          }
+        } catch (mpErr: any) {
+          console.error('Error llamando a API de reembolso de MP:', mpErr);
+        }
+      }
+
+      await bookingRef.update({
+        depositStatus: 'devuelto_a_cliente',
+        depositRefundedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      return res.json({
+        success: true,
+        message: 'Depósito de garantía reembolsado exitosamente al cliente.',
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/refund-deposit:', err);
+      return res.status(500).json({ error: err.message || 'Error al procesar el reembolso de la garantía.' });
+    }
+  });
+
+  // 1. Confirmar devolución del bien: liquida el alquiler al dueño y reintegra la caución al cliente
+  app.post('/api/rentals/confirm-return', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { bookingId } = req.body;
+      const user = (req as any).user;
+
+      if (!bookingId) {
+        return res.status(400).json({ error: 'Falta el bookingId de la reserva.' });
+      }
+
+      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+      const bookingSnap = await bookingRef.get();
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({ error: 'Reserva no encontrada.' });
+      }
+
+      const booking = bookingSnap.data() as any;
+
+      // Solo el propietario o admin puede confirmar devolución
+      const isOwner = user.uid === booking.ownerUid || user.uid === booking.ownerId;
+      const isAdminUser = isUserAdmin(user);
+
+      if (!isOwner && !isAdminUser) {
+        return res.status(403).json({ error: 'No tienes permisos para confirmar la devolución de este bien.' });
+      }
+
+      // Si ya estaba liquidado, evitar doble acreditación
+      if (booking.paymentStatus === 'liquidado_a_dueno') {
+        return res.json({ success: true, message: 'La reserva ya fue liquidada previamente.', booking });
+      }
+
+      const ownerId = booking.ownerUid || booking.ownerId || user.uid;
+      const ownerNetAmount = Number(booking.ownerNetAmount) || 0;
+
+      // Si la garantía fue pagada por MP, disparar reembolso al cliente
+      if (booking.mpDepositPaymentId && isMpConfigured) {
+        try {
+          await fetch(`https://api.mercadopago.com/v1/payments/${booking.mpDepositPaymentId}/refunds`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (refundErr) {
+          console.warn('Error en reembolso MP en confirm-return:', refundErr);
+        }
+      }
+
+      // Actualizar booking en Firestore con Admin SDK
+      await bookingRef.update({
+        status: 'devuelto',
+        paymentStatus: 'liquidado_a_dueno',
+        depositStatus: 'devuelto_a_cliente',
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Actualizar saldo en la billetera del propietario
+      const ownerRef = adminDb.collection('rental_owners').doc(ownerId);
+      const ownerSnap = await ownerRef.get();
+
+      if (ownerSnap.exists) {
+        await ownerRef.update({
+          walletBalance: FieldValue.increment(ownerNetAmount),
+          pendingBalance: FieldValue.increment(-ownerNetAmount),
+          totalEarned: FieldValue.increment(ownerNetAmount),
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Devolución confirmada con éxito. Caución reintegrada y saldo liquidado al locador.',
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/confirm-return:', err);
+      return res.status(500).json({ error: err.message || 'Error del servidor al confirmar devolución.' });
+    }
+  });
+
+  // 2. Reportar daño y retener garantía: acredita garantía + alquiler al locador
+  app.post('/api/rentals/report-damage', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { bookingId, damageReport } = req.body;
+      const user = (req as any).user;
+
+      if (!bookingId || !damageReport) {
+        return res.status(400).json({ error: 'Faltan datos requeridos (bookingId, damageReport).' });
+      }
+
+      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+      const bookingSnap = await bookingRef.get();
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({ error: 'Reserva no encontrada.' });
+      }
+
+      const booking = bookingSnap.data() as any;
+      const isOwner = user.uid === booking.ownerUid || user.uid === booking.ownerId;
+      const isAdminUser = isUserAdmin(user);
+
+      if (!isOwner && !isAdminUser) {
+        return res.status(403).json({ error: 'No tienes permisos para registrar daño en este alquiler.' });
+      }
+
+      const ownerId = booking.ownerUid || booking.ownerId || user.uid;
+      const ownerNetAmount = Number(booking.ownerNetAmount) || 0;
+      const depositRetained = Number(damageReport.depositRetained) || Number(booking.depositAmount) || 0;
+
+      // Actualizar reserva
+      await bookingRef.update({
+        status: 'devuelto',
+        paymentStatus: 'liquidado_a_dueno',
+        depositStatus: 'retenido_por_dano',
+        damageReport: {
+          ...damageReport,
+          reportedAt: new Date().toISOString(),
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Acreditar alquiler + caución retenida al locador
+      const ownerRef = adminDb.collection('rental_owners').doc(ownerId);
+      const ownerSnap = await ownerRef.get();
+
+      if (ownerSnap.exists) {
+        await ownerRef.update({
+          walletBalance: FieldValue.increment(ownerNetAmount + depositRetained),
+          pendingBalance: FieldValue.increment(-ownerNetAmount),
+          totalEarned: FieldValue.increment(ownerNetAmount + depositRetained),
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Garantía retenida por daño y acreditada a tu billetera disponible.',
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/report-damage:', err);
+      return res.status(500).json({ error: err.message || 'Error al reportar daño.' });
+    }
+  });
+
+  // 3. Solicitar retiro de fondos a CBU/Alias
+  app.post('/api/rentals/request-payout', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { amount, cbuOrAlias, bankOrMp, ownerName, ownerPhone } = req.body;
+      const user = (req as any).user;
+
+      const numAmount = Number(amount);
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ error: 'Monto a retirar inválido.' });
+      }
+
+      if (!cbuOrAlias) {
+        return res.status(400).json({ error: 'Se requiere CBU/CVU o Alias para transferir.' });
+      }
+
+      const ownerRef = adminDb.collection('rental_owners').doc(user.uid);
+      const ownerSnap = await ownerRef.get();
+
+      if (ownerSnap.exists) {
+        const ownerData = ownerSnap.data() as any;
+        const currentBalance = Number(ownerData.walletBalance) || 0;
+
+        if (currentBalance < numAmount) {
+          return res.status(400).json({
+            error: `Saldo disponible insuficiente ($${currentBalance.toLocaleString('es-AR')}) para retirar $${numAmount.toLocaleString('es-AR')}.`,
+          });
+        }
+
+        // Deducir del saldo disponible
+        await ownerRef.update({
+          walletBalance: FieldValue.increment(-numAmount),
+        });
+      }
+
+      const payoutId = `payout-${Date.now()}`;
+      const payoutDoc = {
+        id: payoutId,
+        ownerId: user.uid,
+        ownerUid: user.uid,
+        ownerName: ownerName || user.email || 'Locador',
+        ownerPhone: ownerPhone || '',
+        cbuOrAlias,
+        bankOrMp: bankOrMp || 'Mercado Pago',
+        amount: numAmount,
+        status: 'pendiente',
+        requestedAt: new Date().toISOString(),
+      };
+
+      await adminDb.collection('rental_payouts').doc(payoutId).set(payoutDoc);
+
+      return res.json({
+        success: true,
+        payoutId,
+        message: 'Solicitud de retiro registrada en el servidor con éxito.',
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/request-payout:', err);
+      return res.status(500).json({ error: err.message || 'Error al procesar solicitud de retiro.' });
+    }
+  });
+
+  // 4. Procesar o liquidar pago de retiro (Solo Administrador)
+  app.post('/api/rentals/process-payout', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { payoutId, status, notes } = req.body;
+      const user = (req as any).user;
+
+      if (!isUserAdmin(user)) {
+        return res.status(403).json({ error: 'Solo el administrador central puede procesar retiros.' });
+      }
+
+      if (!payoutId || !['transferido', 'rechazado', 'procesando'].includes(status)) {
+        return res.status(400).json({ error: 'Parámetros inválidos.' });
+      }
+
+      const payoutRef = adminDb.collection('rental_payouts').doc(payoutId);
+      const payoutSnap = await payoutRef.get();
+
+      if (!payoutSnap.exists) {
+        return res.status(404).json({ error: 'Solicitud de retiro no encontrada.' });
+      }
+
+      const payoutData = payoutSnap.data() as any;
+
+      // Si se rechaza, restituir el monto a la billetera del propietario
+      if (status === 'rechazado' && payoutData.status !== 'rechazado') {
+        const ownerRef = adminDb.collection('rental_owners').doc(payoutData.ownerUid || payoutData.ownerId);
+        const ownerSnap = await ownerRef.get();
+        if (ownerSnap.exists) {
+          await ownerRef.update({
+            walletBalance: FieldValue.increment(payoutData.amount),
+          });
+        }
+      }
+
+      await payoutRef.update({
+        status,
+        processedAt: new Date().toISOString(),
+        notes: notes || '',
+      });
+
+      return res.json({
+        success: true,
+        message: `Retiro actualizado a estado: ${status}`,
+      });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/process-payout:', err);
+      return res.status(500).json({ error: err.message || 'Error al procesar el retiro.' });
     }
   });
 

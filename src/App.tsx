@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { SearchBar } from './components/SearchBar';
 import { WorkerCard } from './components/WorkerCard';
@@ -77,6 +78,8 @@ import { extractUniqueZones, normalizeZoneKey, formatZoneName } from './lib/zone
 import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck, FileText } from 'lucide-react';
 
 export default function App() {
+  const { currentUser, requireAuth, openAuthModal, getIdToken } = useAuth();
+
   // Persistence State synced with Cloud Firestore
   const [workers, setWorkers] = useState<Worker[]>(() => {
     const saved = localStorage.getItem('servigo_workers_v1');
@@ -360,6 +363,23 @@ export default function App() {
       unsubscribeBanners();
       unsubscribeConfig();
     };
+  }, []);
+
+  // Handle Mercado Pago return parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'rentals' || tabParam === 'alquiler') {
+      setActiveTab('alquiler');
+    }
+    if (params.get('mp_connected') === 'true') {
+      showToast('🎉 ¡Cuenta de Mercado Pago vinculada exitosamente!');
+      window.history.replaceState({}, document.title, window.location.pathname + '?tab=alquiler');
+    }
+    if (params.get('booking_status') === 'confirmado') {
+      showToast('✅ ¡Pago aprobado en Mercado Pago! Tu reserva ha sido confirmada.');
+      window.history.replaceState({}, document.title, window.location.pathname + '?tab=alquiler');
+    }
   }, []);
 
 
@@ -786,26 +806,39 @@ export default function App() {
 
   const handleSaveRentalItem = async (item: RentalItem, owner?: RentalOwner) => {
     try {
-      await saveRentalItemToFirestore(item);
+      const secureItem: RentalItem = {
+        ...item,
+        ownerId: currentUser?.uid || item.ownerId || 'locador-demo',
+        ownerUid: currentUser?.uid || item.ownerUid || 'locador-demo',
+        createdBy: currentUser?.uid || item.createdBy || 'locador-demo',
+      };
+
+      await saveRentalItemToFirestore(secureItem);
       setRentalItems((prev) => {
-        const exists = prev.some((i) => i.id === item.id);
-        const updated = exists ? prev.map((i) => (i.id === item.id ? item : i)) : [item, ...prev];
+        const exists = prev.some((i) => i.id === secureItem.id);
+        const updated = exists ? prev.map((i) => (i.id === secureItem.id ? secureItem : i)) : [secureItem, ...prev];
         localStorage.setItem('servigo_rentals_v1', JSON.stringify(updated));
         return updated;
       });
 
       if (owner) {
-        await saveRentalOwnerToFirestore(owner);
+        const secureOwner: RentalOwner = {
+          ...owner,
+          id: currentUser?.uid || owner.id,
+          ownerUid: currentUser?.uid || owner.ownerUid,
+          createdBy: currentUser?.uid || owner.createdBy,
+        };
+        await saveRentalOwnerToFirestore(secureOwner);
         setRentalOwners((prev) => {
-          const exists = prev.some((o) => o.id === owner.id);
-          const updated = exists ? prev.map((o) => (o.id === owner.id ? owner : o)) : [owner, ...prev];
+          const exists = prev.some((o) => o.id === secureOwner.id);
+          const updated = exists ? prev.map((o) => (o.id === secureOwner.id ? secureOwner : o)) : [secureOwner, ...prev];
           localStorage.setItem('servigo_rental_owners_v1', JSON.stringify(updated));
           return updated;
         });
       }
 
       showToast(`¡"${item.title}" guardado en ServiGo Alquiler!`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       showToast('Error al guardar artículo de alquiler.');
       throw err;
@@ -829,9 +862,16 @@ export default function App() {
 
   const handleBookRental = async (booking: RentalBooking) => {
     try {
-      await saveRentalBookingToFirestore(booking);
+      const secureBooking: RentalBooking = {
+        ...booking,
+        clientUid: currentUser?.uid || booking.clientUid || 'cliente-demo',
+        ownerUid: booking.ownerUid || booking.ownerId || 'locador-demo',
+        createdBy: currentUser?.uid || booking.createdBy || 'cliente-demo',
+      };
+
+      await saveRentalBookingToFirestore(secureBooking);
       setRentalBookings((prev) => {
-        const updated = [booking, ...prev];
+        const updated = [secureBooking, ...prev];
         localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(updated));
         return updated;
       });
@@ -843,27 +883,64 @@ export default function App() {
 
   const handleRequestPayout = async (payout: RentalPayoutRequest) => {
     try {
-      await saveRentalPayoutToFirestore(payout);
+      const token = await getIdToken();
+      if (token) {
+        const res = await fetch('/api/rentals/request-payout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payout),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al solicitar retiro en servidor');
+        }
+        if (data.payoutId) {
+          payout.id = data.payoutId;
+        }
+      } else {
+        await saveRentalPayoutToFirestore(payout);
+      }
+
       setRentalPayouts((prev) => {
         const updated = [payout, ...prev];
         localStorage.setItem('servigo_rental_payouts_v1', JSON.stringify(updated));
         return updated;
       });
       showToast('¡Solicitud de retiro enviada! La administración transferirá a tu CBU/Alias.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast('Error al solicitar retiro.');
+      showToast(err.message || 'Error al solicitar retiro.');
       throw err;
     }
   };
 
   const handleConfirmItemReturned = async (bookingId: string) => {
     try {
-      await updateRentalBookingStatus(bookingId, {
-        status: 'devuelto',
-        paymentStatus: 'liquidado_a_dueno',
-        depositStatus: 'devuelto_a_cliente',
-      });
+      const token = await getIdToken();
+      if (token) {
+        const res = await fetch('/api/rentals/confirm-return', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ bookingId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al liquidar devolución en servidor');
+        }
+      } else {
+        await updateRentalBookingStatus(bookingId, {
+          status: 'devuelto',
+          paymentStatus: 'liquidado_a_dueno',
+          depositStatus: 'devuelto_a_cliente',
+        });
+      }
+
       setRentalBookings((prev) =>
         prev.map((b) =>
           b.id === bookingId
@@ -877,9 +954,9 @@ export default function App() {
         )
       );
       showToast('🎉 ¡Devolución confirmada! Caución reintegrada y saldo acreditado al dueño.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast('Error al actualizar estado del alquiler.');
+      showToast(err.message || 'Error al actualizar estado del alquiler.');
       throw err;
     }
   };
@@ -889,12 +966,29 @@ export default function App() {
     damageReport: DamageReport
   ) => {
     try {
-      await updateRentalBookingStatus(bookingId, {
-        status: 'devuelto',
-        paymentStatus: 'liquidado_a_dueno',
-        depositStatus: 'retenido_por_dano',
-        damageReport,
-      });
+      const token = await getIdToken();
+      if (token) {
+        const res = await fetch('/api/rentals/report-damage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ bookingId, damageReport }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al procesar retención por daño');
+        }
+      } else {
+        await updateRentalBookingStatus(bookingId, {
+          status: 'devuelto',
+          paymentStatus: 'liquidado_a_dueno',
+          depositStatus: 'retenido_por_dano',
+          damageReport,
+        });
+      }
+
       setRentalBookings((prev) => {
         const updated = prev.map((b) =>
           b.id === bookingId
@@ -911,9 +1005,9 @@ export default function App() {
         return updated;
       });
       showToast('⚠️ Daño registrado: la caución de garantía ha sido retenida a favor del locador según contrato.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast('Error al registrar informe de daño.');
+      showToast(err.message || 'Error al registrar informe de daño.');
       throw err;
     }
   };
@@ -923,7 +1017,24 @@ export default function App() {
     status: 'procesando' | 'transferido' | 'rechazado'
   ) => {
     try {
-      await updateRentalPayoutStatus(payoutId, status);
+      const token = await getIdToken();
+      if (token) {
+        const res = await fetch('/api/rentals/process-payout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ payoutId, status }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al procesar el retiro en servidor');
+        }
+      } else {
+        await updateRentalPayoutStatus(payoutId, status);
+      }
+
       setRentalPayouts((prev) =>
         prev.map((p) =>
           p.id === payoutId
@@ -932,10 +1043,9 @@ export default function App() {
         )
       );
       showToast(`Estado de la transferencia actualizado a "${status}".`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast('Error al actualizar transferencia.');
-      throw err;
+      showToast(err.message || 'Error al actualizar transferencia.');
     }
   };
 

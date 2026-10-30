@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Wallet,
@@ -17,10 +17,13 @@ import {
   FileText,
   MessageSquare,
   Scale,
-  ShieldAlert
+  ShieldAlert,
+  Link as LinkIcon
 } from 'lucide-react';
 import { RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport } from '../../types';
 import { RentalAgreementModal } from './RentalAgreementModal';
+import { useAuth } from '../../context/AuthContext';
+import { subscribeRentalPlatformFee } from '../../lib/firebase';
 
 interface RentalOwnerDashboardModalProps {
   isOpen: boolean;
@@ -48,6 +51,17 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
   showToast,
 }) => {
   if (!isOpen) return null;
+
+  const { user } = useAuth();
+  const [platformFeeRate, setPlatformFeeRate] = useState<number>(0.05);
+  const [isConnectingMp, setIsConnectingMp] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeRentalPlatformFee((rate) => {
+      setPlatformFeeRate(rate);
+    });
+    return () => unsub();
+  }, []);
 
   // Selected owner filter (if multiple, or current owner)
   const [selectedOwnerDniOrName, setSelectedOwnerDniOrName] = useState<string>(() => {
@@ -88,16 +102,44 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
   const computedAvailable = ownerBookings
     .filter((b) => b.status === 'devuelto' || b.paymentStatus === 'liquidado_a_dueno')
     .reduce((sum, b) => {
-      const net = b.ownerNetAmount || b.rentalSubtotal * 0.90 || b.totalPrice * 0.90;
+      const rate = b.platformFeeRate || platformFeeRate || 0.05;
+      const net = b.ownerNetAmount || b.rentalSubtotal * (1 - rate) || b.totalPrice * (1 - rate);
       const retainedDeposit = b.depositStatus === 'retenido_por_dano' ? (b.damageReport?.depositRetained || b.depositAmount || 0) : 0;
       return sum + net + retainedDeposit;
     }, 0);
 
   const computedPending = ownerBookings
     .filter((b) => b.status === 'confirmado' || b.status === 'en_curso' || b.status === 'pendiente')
-    .reduce((sum, b) => sum + (b.ownerNetAmount || b.rentalSubtotal * 0.90 || b.totalPrice * 0.90), 0);
+    .reduce((sum, b) => {
+      const rate = b.platformFeeRate || platformFeeRate || 0.05;
+      return sum + (b.ownerNetAmount || b.rentalSubtotal * (1 - rate) || b.totalPrice * (1 - rate));
+    }, 0);
 
   const totalEarned = computedAvailable + computedPending;
+
+  const handleConnectMercadoPago = async () => {
+    if (!user) {
+      showToast('Inicia sesión para vincular tu cuenta de Mercado Pago');
+      return;
+    }
+    setIsConnectingMp(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/mp/connect', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Error al obtener URL de Mercado Pago');
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Error al conectar con Mercado Pago');
+    } finally {
+      setIsConnectingMp(false);
+    }
+  };
 
   const handleRequestWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,9 +271,44 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
                 ${totalEarned.toLocaleString('es-AR')}
               </span>
               <span className="text-[10px] text-slate-400 block">
-                Comisión ServiGo 10% ya deducida
+                Comisión ServiGo ({Math.round(platformFeeRate * 100)}%) ya deducida
               </span>
             </div>
+          </div>
+
+          {/* Mercado Pago Account Linking Banner */}
+          <div className="p-4 bg-sky-950/40 border border-sky-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-white text-xs sm:text-sm flex items-center gap-1.5">
+                  💳 Mercado Pago Marketplace
+                </span>
+                {matchedOwner?.mpConnected ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    ✓ Vinculado (ID: {matchedOwner.mpUserId})
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    No vinculado
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {matchedOwner?.mpConnected
+                  ? 'Tu cuenta está conectada para recibir cobros directos de inquilinos con retención automática de comisiones.'
+                  : 'Vincula tu cuenta de Mercado Pago para que las reservas de tus artículos se cobren con acreditación a tu nombre.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={isConnectingMp}
+              onClick={handleConnectMercadoPago}
+              className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>{isConnectingMp ? 'Conectando...' : matchedOwner?.mpConnected ? 'Re-vincular Mercado Pago' : 'Vincular con Mercado Pago'}</span>
+            </button>
           </div>
 
           {/* MercadoLibre-style Split Explanation */}
@@ -241,11 +318,11 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
               <span>¿Cómo funciona el cobro y la comisión al estilo MercadoLibre?</span>
             </div>
             <p className="leading-relaxed text-orange-900/90 text-[11px]">
-              1. El cliente paga el alquiler y la garantía a la <strong>billetera central de ServiGo</strong>.
+              1. El cliente paga el alquiler y la garantía mediante <strong>Mercado Pago</strong>.
               <br />
-              2. ServiGo retiene su <strong>comisión del 10%</strong> para costear el seguro de mediación, soporte y contrato legal.
+              2. ServiGo retiene automáticamente su <strong>comisión de plataforma ({Math.round(platformFeeRate * 100)}%)</strong> configurada.
               <br />
-              3. El <strong>90% restante</strong> queda en tu favor. Una vez devuelto el artículo, solicitas el retiro y te transferimos a tu CBU/CVU o Alias de Mercado Pago.
+              3. El <strong>{Math.round((1 - platformFeeRate) * 100)}% restante</strong> queda acreditado a tu favor. Una vez devuelto el artículo conforme, los fondos quedan liberados en tu billetera.
             </p>
           </div>
 
@@ -383,9 +460,11 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
                         <span className="font-bold text-slate-900">${b.totalPrice.toLocaleString('es-AR')}</span>
                       </div>
                       <div>
-                        <span className="text-emerald-700 block text-[10px] font-bold">Tu Neto Alquiler (90%):</span>
+                        <span className="text-emerald-700 block text-[10px] font-bold">
+                          Tu Neto ({Math.round((1 - (b.platformFeeRate || platformFeeRate || 0.05)) * 100)}%):
+                        </span>
                         <span className="font-black text-emerald-700">
-                          ${(b.ownerNetAmount || b.rentalSubtotal * 0.90 || b.totalPrice * 0.90).toLocaleString('es-AR')}
+                          ${(b.ownerNetAmount || b.rentalSubtotal * (1 - (b.platformFeeRate || platformFeeRate || 0.05)) || b.totalPrice * (1 - (b.platformFeeRate || platformFeeRate || 0.05))).toLocaleString('es-AR')}
                         </span>
                       </div>
                       <div>
@@ -393,12 +472,35 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
                         <span className="font-black text-amber-700">${b.depositAmount.toLocaleString('es-AR')}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">Comisión ServiGo (10%):</span>
+                        <span className="text-slate-400 block text-[10px]">
+                          Comisión ServiGo ({Math.round((b.platformFeeRate || platformFeeRate || 0.05) * 100)}%):
+                        </span>
                         <span className="font-bold text-orange-600">
-                          ${(b.platformFeeAmount || b.rentalSubtotal * 0.10 || b.totalPrice * 0.10).toLocaleString('es-AR')}
+                          ${(b.platformFeeAmount || b.rentalSubtotal * (b.platformFeeRate || platformFeeRate || 0.05) || b.totalPrice * (b.platformFeeRate || platformFeeRate || 0.05)).toLocaleString('es-AR')}
                         </span>
                       </div>
                     </div>
+
+                    {/* Coordinar entrega por WhatsApp solo si ya está confirmada / pagada */}
+                    {(b.status === 'confirmado' || b.paymentStatus === 'pagado') && b.clientPhone && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-900 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Pago recibido. Puedes coordinar la entrega con el cliente.</span>
+                        </div>
+                        <a
+                          href={`https://wa.me/549${b.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                            `¡Hola ${b.clientName}! Tu reserva para "${b.rentalItemTitle}" ya está confirmada y pagada en ServiGo. Te contacto para coordinar la entrega del producto.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] flex items-center gap-1 transition-colors shrink-0"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Coordinar por WhatsApp</span>
+                        </a>
+                      </div>
+                    )}
 
                     {/* Damage Retained Box if applied */}
                     {b.depositStatus === 'retenido_por_dano' && (

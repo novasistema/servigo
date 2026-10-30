@@ -9,10 +9,21 @@ import {
   addDoc,
   onSnapshot,
   query,
+  where,
   orderBy,
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
 import { Worker, BookingRequest, Review, PromotedBanner, TabVisibilityConfig, AppConfig, Shop, RemisDriver, RideRequest, SystemCoupon, IssuedVoucher, JobProfile, RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest } from '../types';
 import { INITIAL_WORKERS, INITIAL_SHOPS, INITIAL_REMISES } from '../data/mockData';
 import { INITIAL_JOB_PROFILES } from '../data/mockJobProfiles';
@@ -26,6 +37,20 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
+
+// Initialize Firebase Authentication
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+export {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  type User
+};
 
 const WORKERS_COLLECTION = 'workers';
 const BOOKINGS_COLLECTION = 'bookings';
@@ -234,27 +259,42 @@ export async function saveReviewToFirestore(
  * Subscribe to real-time updates for booking requests
  */
 export function subscribeBookings(onData: (bookings: BookingRequest[]) => void): () => void {
-  const bookingsRef = collection(db, BOOKINGS_COLLECTION);
-  const q = query(bookingsRef, orderBy('createdAt', 'desc'));
+  let unsubFirestore: (() => void) | null = null;
 
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
-      const bookingsList: BookingRequest[] = snapshot.docs.map((docSnap) => docSnap.data() as BookingRequest);
-      onData(bookingsList);
-    },
-    (error) => {
-      // Fallback query without orderBy if index is building or error
-      onSnapshot(bookingsRef, (fallbackSnapshot) => {
-        const bookingsList: BookingRequest[] = fallbackSnapshot.docs.map(
-          (docSnap) => docSnap.data() as BookingRequest
-        );
-        onData(bookingsList);
-      });
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
     }
-  );
 
-  return unsubscribe;
+    if (!user) {
+      onData([]);
+      return;
+    }
+
+    const isAdmin = user.email?.toLowerCase() === 'ajnovasistemas@gmail.com';
+    const bookingsRef = collection(db, BOOKINGS_COLLECTION);
+    const q = isAdmin
+      ? query(bookingsRef, orderBy('createdAt', 'desc'))
+      : query(bookingsRef, where('clientUid', '==', user.uid));
+
+    unsubFirestore = onSnapshot(
+      q,
+      (snapshot) => {
+        const bookingsList: BookingRequest[] = snapshot.docs.map((docSnap) => docSnap.data() as BookingRequest);
+        onData(bookingsList);
+      },
+      (error) => {
+        // Quietly fallback or reset without noisy console errors
+        onData([]);
+      }
+    );
+  });
+
+  return () => {
+    unsubAuth();
+    if (unsubFirestore) unsubFirestore();
+  };
 }
 
 /**
@@ -795,6 +835,43 @@ export async function saveAppConfigToFirestore(config: AppConfig): Promise<void>
 }
 
 /**
+ * Subscribe to Rental Platform Fee Rate (app_config/rentals.platformFeeRate)
+ */
+export function subscribeRentalPlatformFee(onData: (feeRate: number) => void): () => void {
+  const docRef = doc(db, APP_CONFIG_COLLECTION, 'rentals');
+  return onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists() && typeof docSnap.data()?.platformFeeRate === 'number') {
+        onData(docSnap.data().platformFeeRate);
+      } else {
+        onData(0.05); // Default initial rate 5%
+      }
+    },
+    (err) => {
+      console.warn('Error reading app_config/rentals, using default 0.05:', err);
+      onData(0.05);
+    }
+  );
+}
+
+/**
+ * Save Rental Platform Fee Rate to app_config/rentals
+ */
+export async function saveRentalPlatformFeeToFirestore(feeRate: number): Promise<void> {
+  try {
+    const docRef = doc(db, APP_CONFIG_COLLECTION, 'rentals');
+    await setDoc(docRef, {
+      platformFeeRate: feeRate,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error saving rental platformFeeRate:', error);
+    throw error;
+  }
+}
+
+/**
  * Delete ALL documents in a given collection
  */
 async function clearCollection(collectionName: string): Promise<void> {
@@ -863,27 +940,74 @@ export async function deleteRentalItemFromFirestore(itemId: string): Promise<voi
 }
 
 /**
- * Subscribe to Rental Bookings in Realtime
+ * Subscribe to Rental Bookings in Realtime (Zero-Trust: Client or Owner or Admin)
  */
 export function subscribeRentalBookings(onData: (bookings: RentalBooking[]) => void): () => void {
-  const bookingsQuery = query(collection(db, RENTAL_BOOKINGS_COLLECTION));
+  let unsubFirestore1: (() => void) | null = null;
+  let unsubFirestore2: (() => void) | null = null;
+  let clientBookings: RentalBooking[] = [];
+  let ownerBookings: RentalBooking[] = [];
 
-  const unsubscribe = onSnapshot(
-    bookingsQuery,
-    (snapshot) => {
-      const bookings: RentalBooking[] = [];
-      snapshot.forEach((docSnap) => {
-        bookings.push(docSnap.data() as RentalBooking);
-      });
-      onData(bookings);
-    },
-    (error) => {
-      console.error('Error fetching rental bookings from Firestore:', error);
+  const mergeAndEmit = () => {
+    const map = new Map<string, RentalBooking>();
+    clientBookings.forEach((b) => map.set(b.id, b));
+    ownerBookings.forEach((b) => map.set(b.id, b));
+    onData(Array.from(map.values()));
+  };
+
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (unsubFirestore1) { unsubFirestore1(); unsubFirestore1 = null; }
+    if (unsubFirestore2) { unsubFirestore2(); unsubFirestore2 = null; }
+    clientBookings = [];
+    ownerBookings = [];
+
+    if (!user) {
       onData([]);
+      return;
     }
-  );
 
-  return unsubscribe;
+    const isAdmin = user.email?.toLowerCase() === 'ajnovasistemas@gmail.com';
+    if (isAdmin) {
+      unsubFirestore1 = onSnapshot(
+        collection(db, RENTAL_BOOKINGS_COLLECTION),
+        (snapshot) => {
+          const bookings = snapshot.docs.map((docSnap) => docSnap.data() as RentalBooking);
+          onData(bookings);
+        },
+        (error) => {
+          onData([]);
+        }
+      );
+    } else {
+      // Query bookings where user is client
+      const qClient = query(collection(db, RENTAL_BOOKINGS_COLLECTION), where('clientUid', '==', user.uid));
+      unsubFirestore1 = onSnapshot(
+        qClient,
+        (snap) => {
+          clientBookings = snap.docs.map((d) => d.data() as RentalBooking);
+          mergeAndEmit();
+        },
+        () => {}
+      );
+
+      // Query bookings where user is owner
+      const qOwner = query(collection(db, RENTAL_BOOKINGS_COLLECTION), where('ownerUid', '==', user.uid));
+      unsubFirestore2 = onSnapshot(
+        qOwner,
+        (snap) => {
+          ownerBookings = snap.docs.map((d) => d.data() as RentalBooking);
+          mergeAndEmit();
+        },
+        () => {}
+      );
+    }
+  });
+
+  return () => {
+    unsubAuth();
+    if (unsubFirestore1) unsubFirestore1();
+    if (unsubFirestore2) unsubFirestore2();
+  };
 }
 
 /**
@@ -920,27 +1044,56 @@ export async function updateRentalBookingStatus(
 }
 
 /**
- * Subscribe to Registered Rental Owners (Locadores)
+ * Subscribe to Registered Rental Owners (Locadores) - Private to owner or admin
  */
 export function subscribeRentalOwners(onData: (owners: RentalOwner[]) => void): () => void {
-  const ownersQuery = query(collection(db, RENTAL_OWNERS_COLLECTION));
+  let unsubFirestore: (() => void) | null = null;
 
-  const unsubscribe = onSnapshot(
-    ownersQuery,
-    (snapshot) => {
-      const owners: RentalOwner[] = [];
-      snapshot.forEach((docSnap) => {
-        owners.push(docSnap.data() as RentalOwner);
-      });
-      onData(owners);
-    },
-    (error) => {
-      console.error('Error fetching rental owners from Firestore:', error);
-      onData([]);
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
     }
-  );
 
-  return unsubscribe;
+    if (!user) {
+      onData([]);
+      return;
+    }
+
+    const isAdmin = user.email?.toLowerCase() === 'ajnovasistemas@gmail.com';
+    if (isAdmin) {
+      unsubFirestore = onSnapshot(
+        collection(db, RENTAL_OWNERS_COLLECTION),
+        (snapshot) => {
+          const owners = snapshot.docs.map((docSnap) => docSnap.data() as RentalOwner);
+          onData(owners);
+        },
+        () => {
+          onData([]);
+        }
+      );
+    } else {
+      // Listen to current user's owner document
+      unsubFirestore = onSnapshot(
+        doc(db, RENTAL_OWNERS_COLLECTION, user.uid),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            onData([docSnap.data() as RentalOwner]);
+          } else {
+            onData([]);
+          }
+        },
+        () => {
+          onData([]);
+        }
+      );
+    }
+  });
+
+  return () => {
+    unsubAuth();
+    if (unsubFirestore) unsubFirestore();
+  };
 }
 
 /**
@@ -948,7 +1101,11 @@ export function subscribeRentalOwners(onData: (owners: RentalOwner[]) => void): 
  */
 export async function saveRentalOwnerToFirestore(owner: RentalOwner): Promise<void> {
   try {
-    const clean = sanitizeForFirestore(owner);
+    const clean = sanitizeForFirestore(owner) as any;
+    // El cliente no puede setear saldos de billetera (gestionados exclusivamente por el servidor)
+    delete clean.walletBalance;
+    delete clean.pendingBalance;
+    delete clean.totalEarned;
     const ref = doc(db, RENTAL_OWNERS_COLLECTION, clean.id);
     await setDoc(ref, clean, { merge: true });
   } catch (error) {
@@ -958,27 +1115,46 @@ export async function saveRentalOwnerToFirestore(owner: RentalOwner): Promise<vo
 }
 
 /**
- * Subscribe to Rental Payout Requests (Retiros de Billetera a CBU/Alias)
+ * Subscribe to Rental Payout Requests (Retiros de Billetera a CBU/Alias) - Private to owner or admin
  */
 export function subscribeRentalPayouts(onData: (payouts: RentalPayoutRequest[]) => void): () => void {
-  const payoutsQuery = query(collection(db, RENTAL_PAYOUTS_COLLECTION));
+  let unsubFirestore: (() => void) | null = null;
 
-  const unsubscribe = onSnapshot(
-    payoutsQuery,
-    (snapshot) => {
-      const payouts: RentalPayoutRequest[] = [];
-      snapshot.forEach((docSnap) => {
-        payouts.push(docSnap.data() as RentalPayoutRequest);
-      });
-      onData(payouts);
-    },
-    (error) => {
-      console.error('Error fetching rental payouts from Firestore:', error);
-      onData([]);
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
     }
-  );
 
-  return unsubscribe;
+    if (!user) {
+      onData([]);
+      return;
+    }
+
+    const isAdmin = user.email?.toLowerCase() === 'ajnovasistemas@gmail.com';
+    const q = isAdmin
+      ? collection(db, RENTAL_PAYOUTS_COLLECTION)
+      : query(collection(db, RENTAL_PAYOUTS_COLLECTION), where('ownerUid', '==', user.uid));
+
+    unsubFirestore = onSnapshot(
+      q,
+      (snapshot) => {
+        const payouts: RentalPayoutRequest[] = [];
+        snapshot.forEach((docSnap) => {
+          payouts.push(docSnap.data() as RentalPayoutRequest);
+        });
+        onData(payouts);
+      },
+      () => {
+        onData([]);
+      }
+    );
+  });
+
+  return () => {
+    unsubAuth();
+    if (unsubFirestore) unsubFirestore();
+  };
 }
 
 /**

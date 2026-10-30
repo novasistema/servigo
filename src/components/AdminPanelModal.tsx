@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriver, CustomTradeOption, SystemCoupon, IssuedVoucher, RentalBooking, RentalPayoutRequest, RentalItem, RentalOwner } from '../types';
 import { getMergedLocalities } from '../lib/zoneUtils';
 import { getAllTradeOptions, slugifyTradeName, BASE_TRADES } from '../lib/tradeUtils';
+import { subscribeRentalPlatformFee, saveRentalPlatformFeeToFirestore } from '../lib/firebase';
 import {
   X,
   Lock,
@@ -135,6 +136,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [ferreteroTitleInput, setFerreteroTitleInput] = useState(appConfig?.ferreteroPartnerTitle || 'Socio Ferretería Bruzzone');
   const [ferreteroDiscountInput, setFerreteroDiscountInput] = useState(appConfig?.ferreteroPartnerDiscountText || '10% OFF en mano de obra con insumos Bruzzone');
   const [isSavingBranding, setIsSavingBranding] = useState(false);
+
+  // Rental platform fee rate state (app_config/rentals.platformFeeRate, default 0.05 = 5%)
+  const [rentalFeePercent, setRentalFeePercent] = useState<number>(5);
+  const [isSavingFeeRate, setIsSavingFeeRate] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    const unsub = subscribeRentalPlatformFee((rate) => {
+      setRentalFeePercent(Math.round(rate * 100));
+    });
+    return () => unsub();
+  }, []);
 
   // Sync state when appConfig loads
   React.useEffect(() => {
@@ -2436,7 +2448,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
                           Billetera Central ServiGo
                           <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">
-                            Escrow & 10% Comisión
+                            Escrow & {rentalFeePercent}% Comisión
                           </span>
                         </h3>
                         <p className="text-xs text-slate-300">
@@ -2446,11 +2458,61 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Configuración de Tasa de Comisión (app_config/rentals.platformFeeRate) */}
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-orange-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-white">⚙️ Tasa de Comisión de ServiGo Alquileres</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 font-mono">
+                          app_config/rentals.platformFeeRate: {(rentalFeePercent / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Define la tasa de comisión retenida en cada alquiler (valor inicial 5% = 0.05). El servidor calcula automáticamente comisiones y neto al liquidar.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          step={1}
+                          value={rentalFeePercent}
+                          onChange={(e) => setRentalFeePercent(Math.max(1, Math.min(50, Number(e.target.value))))}
+                          className="w-20 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-black text-sm text-center focus:border-orange-500 focus:outline-hidden"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isSavingFeeRate}
+                        onClick={async () => {
+                          try {
+                            setIsSavingFeeRate(true);
+                            await saveRentalPlatformFeeToFirestore(rentalFeePercent / 100);
+                            showToast(`✅ Tasa de comisión guardada al ${rentalFeePercent}% (${rentalFeePercent / 100}) en app_config/rentals`);
+                          } catch (err: any) {
+                            showToast('Error al guardar la tasa de comisión');
+                          } finally {
+                            setIsSavingFeeRate(false);
+                          }
+                        }}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                      >
+                        {isSavingFeeRate ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        <span>Guardar Comisión</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Financial Metrics Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                     <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-emerald-500/20 space-y-1">
                       <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase">
-                        <span>Comisión ServiGo (10%)</span>
+                        <span>Comisión ServiGo ({rentalFeePercent}%)</span>
                         <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
                       </div>
                       <p className="text-lg font-black text-emerald-400">
