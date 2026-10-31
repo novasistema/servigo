@@ -3,6 +3,9 @@ import { TabVisibilityConfig, PromotedBanner, AppConfig, Worker, Shop, RemisDriv
 import { getMergedLocalities } from '../lib/zoneUtils';
 import { getAllTradeOptions, slugifyTradeName, BASE_TRADES } from '../lib/tradeUtils';
 import { subscribeRentalPlatformFee, saveRentalPlatformFeeToFirestore } from '../lib/firebase';
+import { useAuth } from '../context/AuthContext';
+import { AdminRentalItemsPanel } from './admin/AdminRentalItemsPanel';
+import { AdminConvenioPanel } from './admin/AdminConvenioPanel';
 import {
   X,
   Lock,
@@ -127,7 +130,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'reset'>('tabs');
+  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'rental_items' | 'convenio' | 'reset'>('rental_items');
+  const { currentUser, isAdmin, loginWithGoogle, logout } = useAuth();
+  const creatorVerified = Boolean(isAdmin && currentUser?.emailVerified);
+  React.useEffect(() => {
+    setIsAdminAuthenticated(creatorVerified);
+  }, [creatorVerified]);
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'paid' | 'pending' | 'expired'>('all');
   
   // Custom Logo and Branding states
@@ -209,7 +217,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Handle PIN verification (Default PIN: 1234)
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === '1234' || pinInput === 'admin') {
+    if (false) {
       setIsAdminAuthenticated(true);
       setPinError(false);
       setLocalTabs(tabConfig);
@@ -570,51 +578,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-lg font-black text-white">Ingresa el PIN de Creador</h3>
+              <h3 className="text-lg font-black text-white">Acceso del Creador</h3>
               <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                Esta sección es exclusiva para el creador de la aplicación. Ingresa tu Clave PIN de administrador para continuar.
+                {currentUser
+                  ? `Estás conectado como ${currentUser.email}. Este panel es solo para la cuenta del creador.`
+                  : 'Iniciá sesión con la cuenta de Google del creador para administrar ServiGo.'}
               </p>
             </div>
-
-            <form onSubmit={handlePinSubmit} className="space-y-4">
-              <div>
-                <input
-                  type="password"
-                  value={pinInput}
-                  onChange={(e) => {
-                    setPinInput(e.target.value);
-                    setPinError(false);
-                  }}
-                  placeholder="Introduce tu PIN"
-                  className={`w-full text-center tracking-widest text-lg font-mono px-4 py-3 bg-slate-950 border rounded-2xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 ${
-                    pinError
-                      ? 'border-rose-500 focus:ring-rose-500/50'
-                      : 'border-slate-800 focus:border-amber-500 focus:ring-amber-500/30'
-                  }`}
-                  autoFocus
-                />
-                {pinError && (
-                  <p className="text-xs text-rose-400 font-bold mt-2 flex items-center justify-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    PIN incorrecto. Intenta nuevamente.
-                  </p>
-                )}
-              </div>
-
+            {currentUser ? (
               <button
-                type="submit"
+                onClick={() => logout()}
+                className="w-full py-3 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-sm"
+              >
+                Cerrar sesión y entrar con otra cuenta
+              </button>
+            ) : (
+              <button
+                onClick={() => loginWithGoogle().catch(() => showToast('No se pudo iniciar sesión'))}
                 className="w-full py-3 px-6 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
               >
                 <Unlock className="w-4 h-4" />
-                <span>Desbloquear Modo Administrador</span>
+                <span>Ingresar con Google</span>
               </button>
-            </form>
+            )}
           </div>
         ) : (
           /* AUTHENTICATED PANEL BODY */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Tab Navigation Switches */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setActiveTab('tabs')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
@@ -715,6 +707,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 {rentalPayouts.some((p) => p.status === 'pendiente') && (
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 )}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('rental_items')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'rental_items' ? 'bg-orange-500 text-slate-950 shadow-md' : 'text-orange-300 hover:text-orange-200'
+                }`}
+              >
+                <span>📦 Publicaciones ({rentalItems.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('convenio')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'convenio' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-amber-300 hover:text-amber-200'
+                }`}
+              >
+                <span>🎟️ Convenio Bruzzone</span>
               </button>
 
               <button
@@ -2435,6 +2445,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* TAB 8: BILLETERA CENTRAL Y COMISIONES DE ALQUILERES (GIVY / MERCADOLIBRE MODEL) */}
+            {activeTab === 'rental_items' && (
+              <AdminRentalItemsPanel rentalItems={rentalItems} rentalBookings={rentalBookings} showToast={showToast} />
+            )}
+
+            {activeTab === 'convenio' && <AdminConvenioPanel showToast={showToast} />}
+
             {activeTab === 'rentals_wallet' && (
               <div className="space-y-6 animate-fadeIn">
                 {/* Header Card */}
@@ -2693,7 +2709,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         Operaciones de Alquiler y Estado de Fondos
                       </h4>
                       <p className="text-xs text-slate-400">
-                        Auditoría en tiempo real de cada alquiler pactado: desglose del 10% de ServiGo, 90% del dueño y garantía.
+                        Auditoría en tiempo real de cada alquiler pactado: desglose de la comisión de ServiGo, el neto del dueño y la garantía.
                       </p>
                     </div>
                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300">
@@ -2789,7 +2805,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-amber-400 block font-bold">90% Neto Dueño</span>
+                              <span className="text-[10px] text-amber-400 block font-bold">Neto Dueño</span>
                               <span className="font-black text-amber-400 text-sm">
                                 ${b.ownerNetAmount.toLocaleString('es-AR')}
                               </span>

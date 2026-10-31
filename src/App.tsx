@@ -186,9 +186,9 @@ export default function App() {
     return INITIAL_JOB_PROFILES;
   });
 
-  // Rental Items (ServiGo Alquiler de Productos - Givy model)
+  // Rental Items (ServiGo Alquiler de Productos)
   const [rentalItems, setRentalItems] = useState<RentalItem[]>(() => {
-    const saved = localStorage.getItem('servigo_rentals_v1');
+    const saved = localStorage.getItem('servigo_rentals_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -199,7 +199,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return INITIAL_RENTAL_ITEMS;
+    return [];
   });
 
   const [rentalBookings, setRentalBookings] = useState<RentalBooking[]>(() => {
@@ -313,7 +313,7 @@ export default function App() {
     const unsubscribeRentals = subscribeRentalItems((firestoreRentals) => {
       if (firestoreRentals && firestoreRentals.length > 0) {
         setRentalItems(firestoreRentals);
-        localStorage.setItem('servigo_rentals_v1', JSON.stringify(firestoreRentals));
+        localStorage.setItem('servigo_rentals_v2', JSON.stringify(firestoreRentals));
       }
     });
 
@@ -405,7 +405,7 @@ export default function App() {
   }, [remises]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_rentals_v1', JSON.stringify(rentalItems));
+    localStorage.setItem('servigo_rentals_v2', JSON.stringify(rentalItems));
   }, [rentalItems]);
 
   useEffect(() => {
@@ -817,7 +817,7 @@ export default function App() {
       setRentalItems((prev) => {
         const exists = prev.some((i) => i.id === secureItem.id);
         const updated = exists ? prev.map((i) => (i.id === secureItem.id ? secureItem : i)) : [secureItem, ...prev];
-        localStorage.setItem('servigo_rentals_v1', JSON.stringify(updated));
+        localStorage.setItem('servigo_rentals_v2', JSON.stringify(updated));
         return updated;
       });
 
@@ -850,7 +850,7 @@ export default function App() {
       await deleteRentalItemFromFirestore(itemId);
       setRentalItems((prev) => {
         const updated = prev.filter((i) => i.id !== itemId);
-        localStorage.setItem('servigo_rentals_v1', JSON.stringify(updated));
+        localStorage.setItem('servigo_rentals_v2', JSON.stringify(updated));
         return updated;
       });
       showToast('Artículo eliminado de ServiGo Alquiler.');

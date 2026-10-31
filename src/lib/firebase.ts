@@ -889,23 +889,15 @@ export function subscribeRentalItems(onData: (items: RentalItem[]) => void): () 
   const unsubscribe = onSnapshot(
     itemsQuery,
     (snapshot) => {
-      if (!snapshot.empty) {
-        const items: RentalItem[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as RentalItem);
-        });
-        onData(items);
-      } else {
-        // Seed initial default rental items if collection is empty
-        INITIAL_RENTAL_ITEMS.forEach((item) => {
-          setDoc(doc(db, RENTALS_COLLECTION, item.id), sanitizeForFirestore(item));
-        });
-        onData(INITIAL_RENTAL_ITEMS);
-      }
+      const items: RentalItem[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data() as RentalItem);
+      });
+      onData(items);
     },
     (error) => {
       console.error('Error fetching rental items from Firestore:', error);
-      onData(INITIAL_RENTAL_ITEMS);
+      onData([]);
     }
   );
 
@@ -1284,3 +1276,54 @@ export async function resetFirestoreToDefaults(): Promise<void> {
 }
 
 
+
+
+/**
+ * ============================================================================
+ * CONVENIO FERRETERÍA BRUZZONE
+ * ============================================================================
+ */
+export interface ConvenioConfig {
+  active: boolean;
+  percent: number;
+  validDays: number;
+  minSpend: number;
+}
+
+export const DEFAULT_CONVENIO: ConvenioConfig = { active: true, percent: 10, validDays: 30, minSpend: 0 };
+
+export function subscribeConvenioConfig(onData: (cfg: ConvenioConfig) => void): () => void {
+  return onSnapshot(
+    doc(db, APP_CONFIG_COLLECTION, 'bruzzone_convenio'),
+    (snap) => onData({ ...DEFAULT_CONVENIO, ...(snap.exists() ? (snap.data() as Partial<ConvenioConfig>) : {}) }),
+    () => onData(DEFAULT_CONVENIO)
+  );
+}
+
+export async function saveConvenioConfig(cfg: ConvenioConfig): Promise<void> {
+  await setDoc(doc(db, APP_CONFIG_COLLECTION, 'bruzzone_convenio'), cfg, { merge: true });
+}
+
+/** Cupones del usuario logueado (los emitidos a su nombre) */
+export function subscribeMyVouchers(onData: (vouchers: IssuedVoucher[]) => void): () => void {
+  let unsubFs: (() => void) | null = null;
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (unsubFs) { unsubFs(); unsubFs = null; }
+    if (!user) { onData([]); return; }
+    unsubFs = onSnapshot(
+      query(collection(db, VOUCHERS_COLLECTION), where('clientId', '==', user.uid)),
+      (snap) => onData(snap.docs.map((d) => d.data() as IssuedVoucher)),
+      () => onData([])
+    );
+  });
+  return () => { unsubAuth(); if (unsubFs) unsubFs(); };
+}
+
+/** Todos los cupones del convenio (solo creador) */
+export function subscribeAllVouchers(onData: (vouchers: IssuedVoucher[]) => void): () => void {
+  return onSnapshot(
+    collection(db, VOUCHERS_COLLECTION),
+    (snap) => onData(snap.docs.map((d) => d.data() as IssuedVoucher)),
+    () => onData([])
+  );
+}

@@ -245,7 +245,7 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
                   </span>
                   <span className="text-[10px] font-bold text-orange-400 flex items-center gap-1 bg-orange-400/10 px-2 py-0.5 rounded-md border border-orange-400/20">
                     <Sparkles className="w-3 h-3" />
-                    Estilo Givy
+                    Pagá seguro
                   </span>
                 </div>
 

@@ -183,7 +183,7 @@ export const WelcomeHubModal: React.FC<WelcomeHubModalProps> = ({
                   ServiGo Alquiler
                 </h3>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-3">
-                  Alquiler de cosas por día (estilo Givy.ar): hormigoneras, hidrolavadoras, gazebos, sonido, carpas y proyectores.
+                  Alquiler de cosas por día entre vecinos: hormigoneras, hidrolavadoras, gazebos, sonido, carpas y proyectores.
                 </p>
               </div>
 

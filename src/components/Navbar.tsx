@@ -161,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div
               onClick={() => setActiveTab('alquiler')}
               className="flex items-center gap-2.5 cursor-pointer group"
-              title="ServiGo Alquiler de Productos Oficial - Estilo Givy"
+              title="ServiGo Alquiler de Productos"
             >
               <img
                 src={servigoAlquilerLogoImg}
@@ -178,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                 </div>
                 <p className="text-[10px] text-orange-100 font-semibold mt-0.5 truncate max-w-[200px] sm:max-w-none">
-                  Alquiler de cosas & herramientas • Estilo Givy
+                  Alquiler de cosas & herramientas
                 </p>
               </div>
             </div>
@@ -275,7 +275,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-white text-emerald-700 shadow-md font-black'
                 : 'bg-emerald-700/80 hover:bg-emerald-700 text-white'
             }`}
-            title="Ir a Alquiler de Productos (Givy)"
+            title="Ir a Alquiler de Productos"
           >
             <RotateCcw className="w-3 h-3 text-emerald-300" />
             <span className="font-black">Alquiler</span>
@@ -379,7 +379,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
                 <span>🔄 Alquileres</span>
                 <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                  Givy
+                  Nuevo
                 </span>
               </button>
 
@@ -423,12 +423,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => setActiveTab('alquiler')}
                 className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 cursor-pointer"
-                title="Alquiler de productos y herramientas estilo Givy"
+                title="Alquiler de productos y herramientas"
               >
                 <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
                 <span>🔄 Alquileres</span>
                 <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                  Givy
+                  Nuevo
                 </span>
               </button>
 

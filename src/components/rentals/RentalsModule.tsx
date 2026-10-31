@@ -1,4 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { RentalHowItWorksModal } from './RentalHowItWorksModal';
+import { MyVouchersModal } from './MyVouchersModal';
+import { subscribeRentalPlatformFee } from '../../lib/firebase';
+import { useAuth } from '../../context/AuthContext';
 import {
   Search,
   Plus,
@@ -72,6 +76,12 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isOwnerDashboardOpen, setIsOwnerDashboardOpen] = useState(false);
   const [contractItem, setContractItem] = useState<RentalItem | null>(null);
+  const [howItWorksTab, setHowItWorksTab] = useState<null | 'alquilar' | 'publicar' | 'precios' | 'preguntas'>(null);
+  const [isMyVouchersOpen, setIsMyVouchersOpen] = useState(false);
+  const [feeRate, setFeeRate] = useState(0.05);
+  React.useEffect(() => subscribeRentalPlatformFee(setFeeRate), []);
+  const ownerPct = 100 - Math.round(feeRate * 100);
+  const { currentUser, requireAuth } = useAuth();
 
   // Available unique zones
   const availableZones = useMemo(() => {
@@ -87,6 +97,9 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
   const filteredItems = useMemo(() => {
     return items
       .filter((item) => {
+        // Publicaciones pausadas por el dueño o el creador
+        if (item.isAvailable === false) return false;
+
         // Category filter
         if (selectedCategory !== 'all' && item.category !== selectedCategory) {
           return false;
@@ -120,6 +133,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
         return true;
       })
       .sort((a, b) => {
+        if (Boolean(b.featured) !== Boolean(a.featured)) return b.featured ? 1 : -1;
         if (sortBy === 'rating') {
           return (b.ownerRating || 0) - (a.ownerRating || 0);
         }
@@ -144,7 +158,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
           <span className="bg-white text-orange-800 text-[10px] px-2 py-0.5 rounded-full tracking-wide uppercase font-black shadow-xs">
             ALQUILERES SEGUROS
           </span>
-          <span className="truncate">Plataforma de Alquiler de Cosas y Herramientas • Modelo Givy.ar</span>
+          <span className="truncate">Alquilá herramientas y artículos entre vecinos de la zona, con pago seguro y garantía</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -184,7 +198,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
                   ServiGo <span className="text-orange-500">Alquiler</span> de Productos
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-                  ¿Por qué comprar una hormigonera, un proyector o un gazebo si solo lo usas un fin de semana? <strong>Ahorrá hasta un 90%</strong> alquilando herramientas y artículos con depósito seguro.
+                  ¿Por qué comprar una hormigonera, un proyector o un gazebo si solo lo usas un fin de semana? Alquilalo por día a un vecino de la zona, pagá seguro con Mercado Pago y recuperá tu garantía al devolverlo. Y si tenés algo guardado sin usar, <strong>publicalo gratis y generá ingresos</strong>.
                 </p>
               </div>
             </div>
@@ -205,7 +219,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
                 onClick={() => setIsOwnerDashboardOpen(true)}
                 className="flex-1 sm:flex-none py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer active:scale-98"
               >
-                <span>💼 Mi Billetera & Ganancias (90%)</span>
+                <span>💼 Mi Billetera & Ganancias ({ownerPct}%)</span>
               </button>
 
               <button
@@ -215,6 +229,22 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
               >
                 <Calculator className="w-3.5 h-3.5" />
                 <span>Calculadora de Ganancias</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHowItWorksTab('alquilar')}
+                className="flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>❓ ¿Cómo funciona? Guía completa</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => (currentUser ? setIsMyVouchersOpen(true) : requireAuth(() => setIsMyVouchersOpen(true), 'Ingresá para ver tus cupones de Ferretería Bruzzone'))}
+                className="flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-orange-300 border border-orange-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>🎟️ Mis cupones Bruzzone</span>
               </button>
 
               <button
@@ -338,7 +368,23 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
 
       {/* Main Grid of Rental Products */}
       <div className="max-w-6xl mx-auto px-4">
-        {filteredItems.length === 0 ? (
+        {items.filter((i) => i.isAvailable !== false).length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 text-center space-y-4 border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
+            <div className="w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">📦</div>
+            <h3 className="text-lg font-black text-slate-900">¡Estamos arrancando! Sé de los primeros en publicar</h3>
+            <p className="text-sm text-slate-500">
+              ¿Tenés una hormigonera, una hidrolavadora, un gazebo o equipo de sonido que usás poco? Publicalo gratis y cobrá cada vez que alguien lo alquile.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center pt-2">
+              <button onClick={() => setIsPublishModalOpen(true)} className="px-4 py-2 rounded-xl bg-orange-600 text-white font-bold text-sm hover:bg-orange-500">
+                Publicar mi producto
+              </button>
+              <button onClick={() => setHowItWorksTab('publicar')} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm hover:bg-slate-200">
+                ¿Cómo funciona?
+              </button>
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 text-center space-y-4 border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
             <div className="w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl font-black">
               🔍
@@ -468,60 +514,44 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
         )}
       </div>
 
-      {/* How it Works / Trust Section (Modelo Givy) */}
+      {/* ¿Cómo funciona? */}
       <section className="max-w-6xl mx-auto px-4 mt-14">
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-700 space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
               ¿CÓMO FUNCIONA EL ALQUILER EN SERVIGO?
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black">
-              Seguro, Rápido y con Garantía Reembolsable
-            </h2>
+            <h2 className="text-2xl sm:text-3xl font-black">Simple, con pago seguro y garantía</h2>
             <p className="text-xs sm:text-sm text-slate-300">
-              Inspirado en la plataforma <strong>Givy.ar</strong>, facilitamos que vecinos y empresas compartan cosas de valor temporal sin riesgos.
+              Vecinos y comercios de la zona alquilan lo que tienen guardado. ServiGo cobra el pago por Mercado Pago y cuida la garantía hasta que el producto vuelve.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-orange-600 text-white font-black flex items-center justify-center text-sm shadow-md">
-                1
-              </div>
-              <h4 className="font-black text-sm text-white">Elegí tu producto</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Navegá entre hormigoneras, hidrolavadoras, gazebos, proyectores, carpas y sonido cerca de tu domicilio.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h4 className="font-black text-base text-white">🛒 Si querés alquilar</h4>
+              <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>Ingresá con Google o email (es gratis).</li>
+                <li>Elegí el producto y las fechas.</li>
+                <li>Pagá alquiler + garantía con Mercado Pago.</li>
+                <li>Retiralo o pedí envío con un cadete.</li>
+                <li>Devolvelo bien y recuperás la garantía, más un cupón de descuento en Ferretería Bruzzone.</li>
+              </ol>
+              <button onClick={() => setHowItWorksTab('alquilar')} className="text-xs font-black text-orange-400 hover:text-orange-300">Ver guía completa →</button>
             </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-md">
-                2
+            <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h4 className="font-black text-base text-white">💰 Si querés publicar</h4>
+              <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>Publicar es gratis: subí fotos, precio por día y garantía.</li>
+                <li>Vinculá tu Mercado Pago para cobrar directo.</li>
+                <li>Entregá el producto y sacale fotos.</li>
+                <li>Cuando vuelve, confirmalo o reportá daños.</li>
+                <li>Te quedás con el {ownerPct}% del alquiler. ServiGo cobra {100 - ownerPct}% solo si se alquila.</li>
+              </ol>
+              <div className="flex gap-3">
+                <button onClick={() => setHowItWorksTab('publicar')} className="text-xs font-black text-orange-400 hover:text-orange-300">Ver guía completa →</button>
+                <button onClick={() => setHowItWorksTab('precios')} className="text-xs font-black text-emerald-400 hover:text-emerald-300">Precios y comisión →</button>
               </div>
-              <h4 className="font-black text-sm text-white">Coordiná fechas</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Seleccioná los días requeridos. Podés retirar en el domicilio del dueño o pedir envío con los <strong>Cadetes de ServiGo</strong>.
-              </p>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-md">
-                3
-              </div>
-              <h4 className="font-black text-sm text-white">Depósito en Garantía</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Se abona una caución de seguridad que se <strong>reintegra al 100%</strong> cuando devolvés el producto funcionando y limpio.
-              </p>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-500 text-white font-black flex items-center justify-center text-sm shadow-md">
-                4
-              </div>
-              <h4 className="font-black text-sm text-white">¡Ahorrá hasta 90%!</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Completás tu arreglo, evento o camping gastando una fracción mínima de lo que costaría comprarlo nuevo.
-              </p>
             </div>
           </div>
 
@@ -585,6 +615,15 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
         dailyPrice={contractItem?.dailyPrice}
         depositAmount={contractItem?.depositAmount}
       />
+
+      <RentalHowItWorksModal
+        isOpen={Boolean(howItWorksTab)}
+        initialTab={howItWorksTab || 'alquilar'}
+        onClose={() => setHowItWorksTab(null)}
+        onOpenPublish={() => setIsPublishModalOpen(true)}
+      />
+
+      <MyVouchersModal isOpen={isMyVouchersOpen} onClose={() => setIsMyVouchersOpen(false)} showToast={showToast} />
 
       <RentalOwnerDashboardModal
         isOpen={isOwnerDashboardOpen}

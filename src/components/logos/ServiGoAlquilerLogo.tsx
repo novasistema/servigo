@@ -38,7 +38,7 @@ export const ServiGoAlquilerLogo: React.FC<ServiGoAlquilerLogoProps> = ({
             </span>
           </div>
           <p className="text-[10px] text-slate-600 font-bold uppercase tracking-wider mt-0.5">
-            Alquiler de Productos • Estilo Givy
+            Alquiler de Productos
           </p>
         </div>
       )}

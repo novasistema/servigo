@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { RentalItem, RentalCategory, RentalItemCondition, RentalOwner } from '../../types';
 import { RENTAL_CATEGORIES } from '../../data/mockRentals';
+import { subscribeRentalPlatformFee } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 
 interface PublishRentalModalProps {
@@ -34,6 +35,8 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
   onSaveRentalItem,
   showToast,
 }) => {
+  const [feeRate, setFeeRate] = useState(0.05);
+  React.useEffect(() => subscribeRentalPlatformFee(setFeeRate), []);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,9 +126,9 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
     setUploadedImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // Commission calculations (10% platform fee, 90% owner net)
+  // Comisión según la tasa configurada por el creador (app_config/rentals)
   const numericDaily = typeof dailyPrice === 'number' ? dailyPrice : 0;
-  const platformFee = Math.round(numericDaily * 0.10);
+  const platformFee = Math.round(numericDaily * feeRate);
   const ownerNet = numericDaily - platformFee;
 
   const handleNextStep = (e: React.FormEvent) => {
@@ -303,7 +306,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
                 <div className="text-xs text-orange-950 space-y-1">
                   <span className="font-black block">Sistema de Billetera Digital & Escrow ServiGo</span>
                   <p className="leading-relaxed">
-                    Los pagos de los alquileres entran en la <strong>billetera central de ServiGo</strong> en custodia. Cuando el cliente recibe el producto conforme, el <strong>90% neto</strong> se acredita en tu saldo para transferir a tu cuenta bancaria o Mercado Pago.
+                    Los pagos de los alquileres entran en la <strong>billetera central de ServiGo</strong> en custodia. Cuando el cliente recibe el producto conforme, el <strong>{100 - Math.round(feeRate * 100)}% neto</strong> se acredita en tu saldo para transferir a tu cuenta bancaria o Mercado Pago.
                   </p>
                 </div>
               </div>
@@ -655,7 +658,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
                     </div>
 
                     <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-                      <span className="text-[10px] text-emerald-700 font-bold block">Tu Ganancia Neta (90%):</span>
+                      <span className="text-[10px] text-emerald-700 font-bold block">Tu Ganancia Neta ({100 - Math.round(feeRate * 100)}%):</span>
                       <span className="font-black text-emerald-600 text-sm">
                         ${ownerNet.toLocaleString('es-AR')}
                       </span>

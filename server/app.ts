@@ -675,7 +675,7 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
               currency_id: 'ARS',
             },
           ],
-          marketplace_fee: platformFeeAmount,
+          ...(ownerAccessToken ? { marketplace_fee: platformFeeAmount } : {}),
           external_reference: bookingId,
           notification_url: `${baseUrl}/api/mp/webhook`,
           back_urls: {
@@ -720,6 +720,7 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
 
       // 7. Crear reserva en Firestore con estado pendiente_pago
       const bookingDoc = {
+        paidDirectToOwner: Boolean(ownerAccessToken),
         id: bookingId,
         rentalItemId: item.id,
         rentalItemTitle: item.title,
@@ -891,7 +892,7 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
         });
 
         const ownerId = booking.ownerUid || booking.ownerId;
-        if (ownerId) {
+        if (ownerId && !booking.paidDirectToOwner) {
           const ownerRef = adminDb.collection('rental_owners').doc(ownerId);
           tx.set(ownerRef, {
             pendingBalance: FieldValue.increment(Number(booking.ownerNetAmount) || 0),
@@ -1001,19 +1002,37 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       if (booking.paymentStatus === 'liquidado_a_dueno') {
         return res.json({ success: true, message: 'La reserva ya fue liquidada previamente.', booking });
       }
+      if (booking.paymentStatus !== 'pagado') {
+        return res.status(400).json({ error: 'La reserva todavía no figura como pagada. No se puede cerrar.' });
+      }
 
       const ownerId = booking.ownerUid || booking.ownerId || user.uid;
       const ownerNetAmount = Number(booking.ownerNetAmount) || 0;
 
-      // Si la garantía fue pagada por MP, disparar reembolso al cliente
-      if (booking.mpDepositPaymentId && isMpConfigured) {
+      // Mora por atraso: 150% del precio diario por día, descontada de la garantía
+      const depositPaid = booking.depositStatus === 'en_custodia' ? (Number(booking.depositAmount) || 0) : 0;
+      let lateFee = 0;
+      if (booking.endDate) {
+        const daysLate = Math.floor((Date.now() - new Date(`${booking.endDate}T23:59:59`).getTime()) / 86400000) + 1;
+        if (daysLate > 0) {
+          const daily = Number(booking.dailyPrice) || (Number(booking.rentalSubtotal) || 0) / Math.max(1, Number(booking.totalDays) || 1);
+          lateFee = Math.round(daily * 1.5 * daysLate);
+        }
+      }
+      const lateFeeRetained = Math.min(lateFee, depositPaid);
+      const depositRefund = depositPaid - lateFeeRetained;
+
+      // Si la garantía fue pagada por MP, reintegrar al cliente (descontando la mora)
+      if (booking.mpDepositPaymentId && isMpConfigured && depositRefund > 0) {
         try {
           await fetch(`https://api.mercadopago.com/v1/payments/${booking.mpDepositPaymentId}/refunds`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
               'Content-Type': 'application/json',
+              'X-Idempotency-Key': `refund-${bookingId}`,
             },
+            body: JSON.stringify(lateFeeRetained > 0 ? { amount: depositRefund } : {}),
           });
         } catch (refundErr) {
           console.warn('Error en reembolso MP en confirm-return:', refundErr);
@@ -1024,7 +1043,9 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       await bookingRef.update({
         status: 'devuelto',
         paymentStatus: 'liquidado_a_dueno',
-        depositStatus: 'devuelto_a_cliente',
+        depositStatus: lateFeeRetained > 0 && depositRefund === 0 ? 'retenido_por_dano' : 'devuelto_a_cliente',
+        lateFeeRetained,
+        depositRefunded: depositRefund,
         updatedAt: new Date().toISOString(),
       });
 
@@ -1033,16 +1054,27 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       const ownerSnap = await ownerRef.get();
 
       if (ownerSnap.exists) {
-        await ownerRef.update({
-          walletBalance: FieldValue.increment(ownerNetAmount),
-          pendingBalance: FieldValue.increment(-ownerNetAmount),
-          totalEarned: FieldValue.increment(ownerNetAmount),
-        });
+        await ownerRef.update(
+          booking.paidDirectToOwner
+            ? {
+                walletBalance: FieldValue.increment(lateFeeRetained),
+                totalEarned: FieldValue.increment(ownerNetAmount + lateFeeRetained),
+              }
+            : {
+                walletBalance: FieldValue.increment(ownerNetAmount + lateFeeRetained),
+                pendingBalance: FieldValue.increment(-ownerNetAmount),
+                totalEarned: FieldValue.increment(ownerNetAmount + lateFeeRetained),
+              }
+        );
       }
+
+      // Convenio Ferretería Bruzzone: cupón para inquilino y dueño al cerrar bien el alquiler
+      const vouchers = await issueBruzzoneVouchers(bookingId, booking);
 
       return res.json({
         success: true,
         message: 'Devolución confirmada con éxito. Caución reintegrada y saldo liquidado al locador.',
+        vouchers,
       });
     } catch (err: any) {
       console.error('Error en /api/rentals/confirm-return:', err);
@@ -1077,7 +1109,15 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
 
       const ownerId = booking.ownerUid || booking.ownerId || user.uid;
       const ownerNetAmount = Number(booking.ownerNetAmount) || 0;
-      const depositRetained = Number(damageReport.depositRetained) || Number(booking.depositAmount) || 0;
+      if (booking.paymentStatus === 'liquidado_a_dueno') {
+        return res.json({ success: true, message: 'La reserva ya fue cerrada previamente.' });
+      }
+      if (booking.paymentStatus !== 'pagado') {
+        return res.status(400).json({ error: 'La reserva todavía no figura como pagada.' });
+      }
+      const depositPaid = booking.depositStatus === 'en_custodia' ? (Number(booking.depositAmount) || 0) : 0;
+      const requested = Number(damageReport.depositRetained);
+      const depositRetained = Math.max(0, Math.min(depositPaid, Number.isFinite(requested) && requested > 0 ? requested : depositPaid));
 
       // Actualizar reserva
       await bookingRef.update({
@@ -1096,11 +1136,18 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       const ownerSnap = await ownerRef.get();
 
       if (ownerSnap.exists) {
-        await ownerRef.update({
-          walletBalance: FieldValue.increment(ownerNetAmount + depositRetained),
-          pendingBalance: FieldValue.increment(-ownerNetAmount),
-          totalEarned: FieldValue.increment(ownerNetAmount + depositRetained),
-        });
+        await ownerRef.update(
+          booking.paidDirectToOwner
+            ? {
+                walletBalance: FieldValue.increment(depositRetained),
+                totalEarned: FieldValue.increment(ownerNetAmount + depositRetained),
+              }
+            : {
+                walletBalance: FieldValue.increment(ownerNetAmount + depositRetained),
+                pendingBalance: FieldValue.increment(-ownerNetAmount),
+                totalEarned: FieldValue.increment(ownerNetAmount + depositRetained),
+              }
+        );
       }
 
       return res.json({
@@ -1221,6 +1268,109 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
     } catch (err: any) {
       console.error('Error en /api/rentals/process-payout:', err);
       return res.status(500).json({ error: err.message || 'Error al procesar el retiro.' });
+    }
+  });
+
+  // =========================================================================
+  // CONVENIO FERRETERÍA BRUZZONE: cupones al cerrar un negocio
+  // Configurable en app_config/bruzzone_convenio { active, percent, validDays, minSpend }
+  // =========================================================================
+  async function getConvenioConfig() {
+    const defaults = { active: true, percent: 10, validDays: 30, minSpend: 0 };
+    try {
+      const snap = await adminDb.collection('app_config').doc('bruzzone_convenio').get();
+      return { ...defaults, ...(snap.exists ? snap.data() : {}) } as typeof defaults;
+    } catch {
+      return defaults;
+    }
+  }
+
+  function newVoucherCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = crypto.randomBytes(6);
+    let out = '';
+    for (const b of bytes) out += alphabet[b % alphabet.length];
+    return `BRZ-${out}`;
+  }
+
+  async function issueBruzzoneVouchers(bookingId: string, booking: any) {
+    const cfg = await getConvenioConfig();
+    if (!cfg.active) return [];
+    const now = new Date();
+    const expires = new Date(now.getTime() + Number(cfg.validDays || 30) * 86400000);
+    const recipients = [
+      { role: 'inquilino', uid: booking.clientUid, name: booking.clientName, phone: booking.clientPhone },
+      { role: 'dueño', uid: booking.ownerUid || booking.ownerId, name: booking.ownerName, phone: booking.ownerPhone },
+    ].filter((r) => r.uid);
+    const issued: any[] = [];
+    for (const r of recipients) {
+      const id = `rental-${bookingId}-${r.role === 'dueño' ? 'owner' : 'client'}`;
+      const ref = adminDb.collection('issued_vouchers').doc(id);
+      const existing = await ref.get();
+      if (existing.exists) { issued.push(existing.data()); continue; }
+      const voucher = {
+        id,
+        voucherCode: newVoucherCode(),
+        couponId: 'convenio-bruzzone-alquiler',
+        couponTitle: `${cfg.percent}% OFF en Ferretería Bruzzone`,
+        discountText: `${cfg.percent}% OFF`,
+        targetShopName: 'Ferretería Bruzzone',
+        source: 'rental',
+        bookingId,
+        workerId: 'servigo-alquiler',
+        workerName: 'ServiGo Alquiler',
+        workerTrade: `Alquiler (${r.role})`,
+        clientId: r.uid,
+        clientName: r.name || '',
+        clientPhone: r.phone || '',
+        minSpend: Number(cfg.minSpend) || 0,
+        issuedAt: now.toISOString(),
+        expiresAt: expires.toISOString(),
+        status: 'active',
+      };
+      await ref.set(voucher);
+      issued.push(voucher);
+    }
+    return issued;
+  }
+
+  // Mostrador de la ferretería: consultar y canjear cupones (solo el creador)
+  app.post('/api/vouchers/check', authenticateFirebaseUser, async (req, res) => {
+    if (!isUserAdmin((req as any).user)) return res.status(403).json({ error: 'Solo el creador puede validar cupones.' });
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    if (!code) return res.status(400).json({ error: 'Falta el código.' });
+    const q = await adminDb.collection('issued_vouchers').where('voucherCode', '==', code).limit(1).get();
+    if (q.empty) return res.status(404).json({ error: 'Cupón inexistente.' });
+    const v = q.docs[0].data() as any;
+    const expired = v.expiresAt && new Date(v.expiresAt) < new Date();
+    return res.json({ voucher: v, valid: v.status === 'active' && !expired, expired });
+  });
+
+  app.post('/api/vouchers/redeem', authenticateFirebaseUser, async (req, res) => {
+    if (!isUserAdmin((req as any).user)) return res.status(403).json({ error: 'Solo el creador puede canjear cupones.' });
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    const purchaseAmount = Number(req.body?.purchaseAmount) || 0;
+    const q = await adminDb.collection('issued_vouchers').where('voucherCode', '==', code).limit(1).get();
+    if (q.empty) return res.status(404).json({ error: 'Cupón inexistente.' });
+    const ref = q.docs[0].ref;
+    try {
+      const result = await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const v = snap.data() as any;
+        if (v.status !== 'active') throw new Error('El cupón ya fue usado.');
+        if (v.expiresAt && new Date(v.expiresAt) < new Date()) throw new Error('El cupón está vencido.');
+        const patch = {
+          status: 'redeemed',
+          redeemedAt: new Date().toISOString(),
+          redeemedByShop: 'Ferretería Bruzzone',
+          purchaseAmount,
+        };
+        tx.update(ref, patch);
+        return { ...v, ...patch };
+      });
+      return res.json({ success: true, voucher: result });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
     }
   });
 
