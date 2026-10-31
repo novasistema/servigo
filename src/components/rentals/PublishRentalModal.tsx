@@ -243,7 +243,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
             </div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-200 block">
-                REGISTRO DE PROPIETARIOS & PUBLICACIÓN • ESTILO MERCADOLIBRE / GIVY
+                PUBLICÁ GRATIS TU PRODUCTO
               </span>
               <h2 className="text-lg sm:text-xl font-black">
                 {activeStep === 1 ? 'Paso 1: Tus Datos de Propietario y Cobro' : 'Paso 2: Datos del Producto y Fotos'}
@@ -304,9 +304,9 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
               <div className="p-3.5 bg-orange-50 border border-orange-200 rounded-2xl flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
                 <div className="text-xs text-orange-950 space-y-1">
-                  <span className="font-black block">Sistema de Billetera Digital & Escrow ServiGo</span>
+                  <span className="font-black block">Cobrás seguro con Mercado Pago</span>
                   <p className="leading-relaxed">
-                    Los pagos de los alquileres entran en la <strong>billetera central de ServiGo</strong> en custodia. Cuando el cliente recibe el producto conforme, el <strong>{100 - Math.round(feeRate * 100)}% neto</strong> se acredita en tu saldo para transferir a tu cuenta bancaria o Mercado Pago.
+                    Quien alquila paga por Mercado Pago. Vos te quedás con el <strong>{100 - Math.round(feeRate * 100)}% del alquiler</strong>: si vinculás tu Mercado Pago lo cobrás directo; si no, se acumula en tu billetera de ServiGo y pedís la transferencia a tu CBU o alias.
                   </p>
                 </div>
               </div>

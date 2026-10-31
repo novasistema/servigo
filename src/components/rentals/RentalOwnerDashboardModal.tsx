@@ -315,7 +315,7 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2 text-xs text-orange-950">
             <div className="flex items-center gap-2 font-bold text-orange-900">
               <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
-              <span>¿Cómo funciona el cobro y la comisión al estilo MercadoLibre?</span>
+              <span>¿Cómo funciona el cobro y la comisión?</span>
             </div>
             <p className="leading-relaxed text-orange-900/90 text-[11px]">
               1. El cliente paga el alquiler y la garantía mediante <strong>Mercado Pago</strong>.

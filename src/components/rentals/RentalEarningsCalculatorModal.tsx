@@ -51,7 +51,7 @@ export const RentalEarningsCalculatorModal: React.FC<RentalEarningsCalculatorMod
             </div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-200 block">
-                ECONOMÍA CIRCULAR • MODELO GIVY
+                CALCULÁ CUÁNTO PODÉS GANAR
               </span>
               <h2 className="text-lg sm:text-xl font-black">
                 Calculadora de Ganancias
