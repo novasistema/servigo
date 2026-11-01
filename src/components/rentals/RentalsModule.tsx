@@ -84,6 +84,8 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
   React.useEffect(() => subscribeRentalPlatformFee(setFeeRate), []);
   const ownerPct = 100 - Math.round(feeRate * 100);
   const { currentUser, requireAuth } = useAuth();
+  const openPublish = () =>
+    requireAuth(() => setIsPublishModalOpen(true), 'Ingresá con tu cuenta para publicar tu herramienta.');
 
   // Available unique zones
   const availableZones = useMemo(() => {
@@ -416,7 +418,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
       <div className="fixed sm:static inset-x-0 bottom-[74px] z-30 px-5 sm:max-w-6xl sm:mx-auto sm:mt-6 pointer-events-none">
         <button
           type="button"
-          onClick={() => setIsPublishModalOpen(true)}
+          onClick={openPublish}
           className="pointer-events-auto w-full sm:w-auto sm:px-8 h-[54px] rounded-2xl bg-sg-green text-[#052e16] font-black text-[17px] inline-flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.35)] cursor-pointer active:scale-[0.99]"
         >
           <Plus className="w-5 h-5" strokeWidth={2.8} aria-hidden="true" />
@@ -447,7 +449,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
       <RentalEarningsCalculatorModal
         isOpen={isCalculatorOpen}
         onClose={() => setIsCalculatorOpen(false)}
-        onOpenPublish={() => setIsPublishModalOpen(true)}
+        onOpenPublish={openPublish}
       />
 
       <RentalAgreementModal
@@ -462,7 +464,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
         isOpen={Boolean(howItWorksTab)}
         initialTab={howItWorksTab || 'alquilar'}
         onClose={() => setHowItWorksTab(null)}
-        onOpenPublish={() => setIsPublishModalOpen(true)}
+        onOpenPublish={openPublish}
       />
 
       <MyRentalsModal isOpen={isMyRentalsOpen} onClose={() => setIsMyRentalsOpen(false)} bookings={bookings} uid={currentUser?.uid} showToast={showToast} />

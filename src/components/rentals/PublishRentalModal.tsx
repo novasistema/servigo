@@ -21,6 +21,7 @@ import { RentalItem, RentalCategory, RentalItemCondition, RentalOwner } from '..
 import { RENTAL_CATEGORIES } from '../../data/mockRentals';
 import { subscribeRentalPlatformFee } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { compressImageFile } from '../../utils/imageCompression';
 
 interface PublishRentalModalProps {
   isOpen: boolean;
@@ -94,17 +95,15 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
+      // Se achica la foto (las del celular pesan varios MB) para que entre en la base y cargue rápido
+      compressImageFile(file, 1024, 0.72)
+        .then((result) => {
           setUploadedImages((prev) => {
             if (prev.length >= 3) return prev;
             return [...prev, result];
           });
-        }
-      };
-      reader.readAsDataURL(file);
+        })
+        .catch(() => showToast('No se pudo cargar esa foto. Probá con otra.'));
     });
 
     if (e.target) {
@@ -222,7 +221,6 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
     setIsSubmitting(true);
     try {
       await onSaveRentalItem(newItem, newOwner);
-      showToast('¡Registro y producto publicado con éxito en ServiGo Alquiler!');
       onClose();
     } catch (err) {
       console.error(err);

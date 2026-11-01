@@ -26,6 +26,7 @@ import {
   setDoc,
   getDocs,
 } from 'firebase/firestore';
+import { safeSetItem } from '../utils/safeStorage';
 import { db, auth, sanitizeForFirestore } from './firebase';
 import { isPubliclyApproved, UserProfile, Merchant, MerchantProduct, Order, OrderStatus, DispatchMethod, OrderMessage } from '../types';
 import { INITIAL_MERCHANTS } from '../data/mockMerchants';
@@ -104,8 +105,8 @@ export async function saveUserProfile(user: UserProfile): Promise<void> {
     await setDoc(userDocRef, userClean, { merge: true });
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem(`servigo_user_${user.id}`, JSON.stringify(userClean));
-      localStorage.setItem('servigo_active_user_id', user.id);
+      safeSetItem(`servigo_user_${user.id}`, JSON.stringify(userClean));
+      safeSetItem('servigo_active_user_id', user.id);
     }
   } catch (error) {
     handleDeliveryFirestoreError(error, 'setDoc', `${USERS_COLLECTION}/${user.id}`);
@@ -269,7 +270,7 @@ export function getSavedMerchantSession(): string | null {
 
 export function setSavedMerchantSession(merchantId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(MERCHANT_SESSION_KEY, merchantId);
+  safeSetItem(MERCHANT_SESSION_KEY, merchantId);
 }
 
 export function clearSavedMerchantSession(): void {

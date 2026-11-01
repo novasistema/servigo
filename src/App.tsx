@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { safeSetItem } from './utils/safeStorage';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { SearchBar } from './components/SearchBar';
@@ -285,31 +286,31 @@ export default function App() {
 
     const unsubscribeWorkers = subscribeWorkers((firestoreWorkers) => {
       setWorkers(real(firestoreWorkers));
-      localStorage.setItem('servigo_workers_v2', JSON.stringify(real(firestoreWorkers)));
+      safeSetItem('servigo_workers_v2', JSON.stringify(real(firestoreWorkers)));
       setIsCloudSynced(true);
     });
 
     const unsubscribeBookings = subscribeBookings((firestoreBookings) => {
       setBookings(firestoreBookings);
-      localStorage.setItem('servigo_bookings_v1', JSON.stringify(firestoreBookings));
+      safeSetItem('servigo_bookings_v1', JSON.stringify(firestoreBookings));
       setIsCloudSynced(true);
     });
 
     const unsubscribeShops = subscribeShops((firestoreShops) => {
       setShops(real(firestoreShops));
-      localStorage.setItem('servigo_shops_v2', JSON.stringify(real(firestoreShops)));
+      safeSetItem('servigo_shops_v2', JSON.stringify(real(firestoreShops)));
       setIsCloudSynced(true);
     });
 
     const unsubscribeJobProfiles = subscribeJobProfiles((firestoreJobProfiles) => {
       setJobProfiles(real(firestoreJobProfiles));
-      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(real(firestoreJobProfiles)));
+      safeSetItem('servigo_job_profiles_v2', JSON.stringify(real(firestoreJobProfiles)));
       setIsCloudSynced(true);
     });
 
     const unsubscribeRemises = subscribeRemises((firestoreRemises) => {
       setRemises(real(firestoreRemises));
-      localStorage.setItem('servigo_remises_v2', JSON.stringify(real(firestoreRemises)));
+      safeSetItem('servigo_remises_v2', JSON.stringify(real(firestoreRemises)));
       setIsCloudSynced(true);
     });
 
@@ -320,37 +321,37 @@ export default function App() {
     const unsubscribeCoupons = subscribeCoupons((firestoreCoupons) => {
       if (firestoreCoupons && firestoreCoupons.length > 0) {
         setCoupons(firestoreCoupons);
-        localStorage.setItem('servigo_coupons_v1', JSON.stringify(firestoreCoupons));
+        safeSetItem('servigo_coupons_v1', JSON.stringify(firestoreCoupons));
       }
     });
 
     const unsubscribeVouchers = subscribeIssuedVouchers((firestoreVouchers) => {
       setIssuedVouchers(firestoreVouchers);
-      localStorage.setItem('servigo_vouchers_v1', JSON.stringify(firestoreVouchers));
+      safeSetItem('servigo_vouchers_v1', JSON.stringify(firestoreVouchers));
     });
 
     const unsubscribeRentals = subscribeRentalItems((firestoreRentals) => {
       if (firestoreRentals && firestoreRentals.length > 0) {
         setRentalItems(firestoreRentals);
-        localStorage.setItem('servigo_rentals_v2', JSON.stringify(firestoreRentals));
+        safeSetItem('servigo_rentals_v2', JSON.stringify(firestoreRentals));
       }
     });
 
     const unsubscribeRentalBookings = subscribeRentalBookings((firestoreBookings) => {
       setRentalBookings(firestoreBookings);
-      localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(firestoreBookings));
+      safeSetItem('servigo_rental_bookings_v1', JSON.stringify(firestoreBookings));
     });
 
     const unsubscribeRentalOwners = subscribeRentalOwners((firestoreOwners) => {
       if (firestoreOwners && firestoreOwners.length > 0) {
         setRentalOwners(firestoreOwners);
-        localStorage.setItem('servigo_rental_owners_v1', JSON.stringify(firestoreOwners));
+        safeSetItem('servigo_rental_owners_v1', JSON.stringify(firestoreOwners));
       }
     });
 
     const unsubscribeRentalPayouts = subscribeRentalPayouts((firestorePayouts) => {
       setRentalPayouts(firestorePayouts);
-      localStorage.setItem('servigo_rental_payouts_v1', JSON.stringify(firestorePayouts));
+      safeSetItem('servigo_rental_payouts_v1', JSON.stringify(firestorePayouts));
     });
 
     const unsubscribeBanners = subscribeBanners((firestoreBanners) => {
@@ -404,31 +405,31 @@ export default function App() {
 
   // Save to LocalStorage fallback cache
   useEffect(() => {
-    localStorage.setItem('servigo_workers_v2', JSON.stringify(workers));
+    safeSetItem('servigo_workers_v2', JSON.stringify(workers));
   }, [workers]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_bookings_v1', JSON.stringify(bookings));
+    safeSetItem('servigo_bookings_v1', JSON.stringify(bookings));
   }, [bookings]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_shops_v2', JSON.stringify(shops));
+    safeSetItem('servigo_shops_v2', JSON.stringify(shops));
   }, [shops]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(jobProfiles));
+    safeSetItem('servigo_job_profiles_v2', JSON.stringify(jobProfiles));
   }, [jobProfiles]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_remises_v2', JSON.stringify(remises));
+    safeSetItem('servigo_remises_v2', JSON.stringify(remises));
   }, [remises]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_rentals_v2', JSON.stringify(rentalItems));
+    safeSetItem('servigo_rentals_v2', JSON.stringify(rentalItems));
   }, [rentalItems]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(rentalBookings));
+    safeSetItem('servigo_rental_bookings_v1', JSON.stringify(rentalBookings));
   }, [rentalBookings]);
 
   // Navigation state (ServiGo Servicios includes jobs, shops, search, cadetes, remises, register, ai, bruzzone, bookings, alquiler)
@@ -634,7 +635,7 @@ export default function App() {
     setJobProfiles((prev) => {
       const exists = prev.some((p) => p.id === profile.id);
       const updated = exists ? prev.map((p) => (p.id === profile.id ? profile : p)) : [profile, ...prev];
-      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(updated));
+      safeSetItem('servigo_job_profiles_v2', JSON.stringify(updated));
       return updated;
     });
     try {
@@ -649,7 +650,7 @@ export default function App() {
   const handleDeleteJobProfile = async (profileId: string) => {
     setJobProfiles((prev) => {
       const updated = prev.filter((p) => p.id !== profileId);
-      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(updated));
+      safeSetItem('servigo_job_profiles_v2', JSON.stringify(updated));
       return updated;
     });
     showToast('Perfil de currículum eliminado.');
@@ -826,7 +827,7 @@ export default function App() {
       setCoupons((prev) => {
         const exists = prev.some((c) => c.id === coupon.id);
         const updated = exists ? prev.map((c) => (c.id === coupon.id ? coupon : c)) : [coupon, ...prev];
-        localStorage.setItem('servigo_coupons_v1', JSON.stringify(updated));
+        safeSetItem('servigo_coupons_v1', JSON.stringify(updated));
         return updated;
       });
       showToast(`¡Cupón "${coupon.title}" guardado correctamente!`);
@@ -841,7 +842,7 @@ export default function App() {
       await deleteCouponFromFirestore(couponId);
       setCoupons((prev) => {
         const updated = prev.filter((c) => c.id !== couponId);
-        localStorage.setItem('servigo_coupons_v1', JSON.stringify(updated));
+        safeSetItem('servigo_coupons_v1', JSON.stringify(updated));
         return updated;
       });
       showToast('Cupón de beneficio eliminado.');
@@ -856,7 +857,7 @@ export default function App() {
       await saveIssuedVoucherToFirestore(voucher);
       setIssuedVouchers((prev) => {
         const updated = [voucher, ...prev];
-        localStorage.setItem('servigo_vouchers_v1', JSON.stringify(updated));
+        safeSetItem('servigo_vouchers_v1', JSON.stringify(updated));
         return updated;
       });
     } catch (err) {
@@ -880,7 +881,7 @@ export default function App() {
       setRentalItems((prev) => {
         const exists = prev.some((i) => i.id === secureItem.id);
         const updated = exists ? prev.map((i) => (i.id === secureItem.id ? secureItem : i)) : [secureItem, ...prev];
-        localStorage.setItem('servigo_rentals_v2', JSON.stringify(updated));
+        safeSetItem('servigo_rentals_v2', JSON.stringify(updated));
         return updated;
       });
 
@@ -895,7 +896,7 @@ export default function App() {
         setRentalOwners((prev) => {
           const exists = prev.some((o) => o.id === secureOwner.id);
           const updated = exists ? prev.map((o) => (o.id === secureOwner.id ? secureOwner : o)) : [secureOwner, ...prev];
-          localStorage.setItem('servigo_rental_owners_v1', JSON.stringify(updated));
+          safeSetItem('servigo_rental_owners_v1', JSON.stringify(updated));
           return updated;
         });
       }
@@ -917,7 +918,7 @@ export default function App() {
       await deleteRentalItemFromFirestore(itemId);
       setRentalItems((prev) => {
         const updated = prev.filter((i) => i.id !== itemId);
-        localStorage.setItem('servigo_rentals_v2', JSON.stringify(updated));
+        safeSetItem('servigo_rentals_v2', JSON.stringify(updated));
         return updated;
       });
       showToast('Artículo eliminado de ServiGo Alquiler.');
@@ -939,7 +940,7 @@ export default function App() {
       await saveRentalBookingToFirestore(secureBooking);
       setRentalBookings((prev) => {
         const updated = [secureBooking, ...prev];
-        localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(updated));
+        safeSetItem('servigo_rental_bookings_v1', JSON.stringify(updated));
         return updated;
       });
     } catch (err) {
@@ -973,7 +974,7 @@ export default function App() {
 
       setRentalPayouts((prev) => {
         const updated = [payout, ...prev];
-        localStorage.setItem('servigo_rental_payouts_v1', JSON.stringify(updated));
+        safeSetItem('servigo_rental_payouts_v1', JSON.stringify(updated));
         return updated;
       });
       showToast('¡Solicitud de retiro enviada! La administración transferirá a tu CBU/Alias.');
@@ -1068,7 +1069,7 @@ export default function App() {
               }
             : b
         );
-        localStorage.setItem('servigo_rental_bookings_v1', JSON.stringify(updated));
+        safeSetItem('servigo_rental_bookings_v1', JSON.stringify(updated));
         return updated;
       });
       showToast('⚠️ Daño registrado: la caución de garantía ha sido retenida a favor del locador según contrato.');

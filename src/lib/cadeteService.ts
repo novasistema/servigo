@@ -20,6 +20,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
+import { safeSetItem } from '../utils/safeStorage';
 import { db, sanitizeForFirestore } from './firebase';
 import { Cadete, CadeteRequest, CadeteRequestStatus, isPubliclyApproved } from '../types';
 import { INITIAL_CADETES } from '../data/mockCadetes';
@@ -54,7 +55,7 @@ export function subscribeCadetes(callback: (cadetes: Cadete[]) => void): () => v
 
           // Cache in localStorage
           try {
-            localStorage.setItem(CADETES_LOCAL_STORAGE_KEY, JSON.stringify(loadedCadetes));
+            safeSetItem(CADETES_LOCAL_STORAGE_KEY, JSON.stringify(loadedCadetes));
           } catch (e) {
             console.warn('LocalStorage cache write error:', e);
           }
@@ -234,7 +235,7 @@ export function getSavedCadeteSession(): string | null {
 
 export function setSavedCadeteSession(cadeteId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CADETE_SESSION_KEY, cadeteId);
+  safeSetItem(CADETE_SESSION_KEY, cadeteId);
 }
 
 export function clearSavedCadeteSession(): void {
