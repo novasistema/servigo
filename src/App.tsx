@@ -19,6 +19,7 @@ import { RemisesSection } from './components/RemisesSection';
 import { DeliveryModule } from './components/delivery/DeliveryModule';
 import { WelcomeHubModal } from './components/WelcomeHubModal';
 import { WelcomeHubScreen } from './components/WelcomeHubScreen';
+import { BottomTabBar, BottomTab } from './components/BottomTabBar';
 import { WorkerCouponModal } from './components/WorkerCouponModal';
 import { ShopDashboardModal } from './components/delivery/ShopDashboardModal';
 import { CadetesSection } from './components/cadetes/CadetesSection';
@@ -1049,10 +1050,43 @@ export default function App() {
     }
   };
 
+  const enterHub = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('servigo_hub_entered');
+      window.scrollTo(0, 0);
+    }
+    setIsWelcomeHubOpen(true);
+  };
+
+  const goToBottomTab = (tab: BottomTab) => {
+    if (tab === 'inicio') {
+      enterHub();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('servigo_hub_entered', 'true');
+      window.scrollTo(0, 0);
+    }
+    setActiveTab(tab === 'servicios' ? 'search' : tab);
+    setIsWelcomeHubOpen(false);
+  };
+
+  const activeBottomTab: BottomTab = isWelcomeHubOpen
+    ? 'inicio'
+    : activeTab === 'alquiler'
+    ? 'alquiler'
+    : activeTab === 'delivery' || activeTab === 'cadetes'
+    ? 'delivery'
+    : 'servicios';
+
   if (isWelcomeHubOpen) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-orange-600 selection:text-white">
+      <div className="min-h-screen bg-sg-navy text-white font-sans selection:bg-orange-600 selection:text-white">
         <WelcomeHubScreen
+          onSearch={(q) => {
+            setSearchQuery(q);
+            goToBottomTab('servicios');
+          }}
           onSelectModule={(module) => {
             if (module === 'delivery') {
               setActiveTab('delivery');
@@ -1073,6 +1107,7 @@ export default function App() {
           isAdminAuthenticated={isAdminAuthenticated}
         />
 
+        <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} />
 
         {/* Allow opening PDF Guide and Admin from Welcome Hub */}
         <RegistrationPdfGuideModal
@@ -1190,7 +1225,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-orange-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white font-bold text-xs sm:text-sm py-3.5 px-5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
+        <div className="fixed bottom-24 sm:bottom-5 right-5 left-5 sm:left-auto z-50 bg-slate-900 text-white font-bold text-xs sm:text-sm py-3.5 px-5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -1209,17 +1244,12 @@ export default function App() {
         onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
         onOpenShopDashboard={() => setIsShopDashboardModalOpen(true)}
         onOpenPublishRental={() => setActiveTab('alquiler')}
-        onOpenWelcomeHub={() => {
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('servigo_hub_entered');
-          }
-          setIsWelcomeHubOpen(true);
-        }}
+        onOpenWelcomeHub={enterHub}
         isAdminAuthenticated={isAdminAuthenticated}
       />
 
       {/* App Body Content */}
-      <main className="flex-1 pb-16">
+      <main className={`flex-1 pb-28 sm:pb-16 ${activeTab === 'alquiler' ? 'bg-sg-navy' : ''}`}>
         {/* TAB 1: WORKERS SEARCH & DISCOVERY CATALOG */}
         {activeTab === 'search' && (
           <div>
@@ -1672,6 +1702,8 @@ export default function App() {
           showToast={showToast}
         />
       </ErrorBoundary>
+
+      <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} />
 
       {/* Welcome Portal / Module Redirection Modal */}
       <WelcomeHubModal

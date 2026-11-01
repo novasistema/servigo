@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import servigoOfficialLogo from '../assets/images/servigo_official_logo_1785771884278.jpg';
 import servigoDeliveryLogoImg from '../assets/images/servigo_delivery_logo.jpg';
+import servigoIcon from '../assets/icon.jpg';
 
 interface NavbarProps {
   activeTab: 'search' | 'shops' | 'jobs' | 'delivery' | 'cadetes' | 'remises' | 'register' | 'ai' | 'bruzzone' | 'bookings' | 'alquiler';
@@ -70,232 +71,116 @@ export const Navbar: React.FC<NavbarProps> = ({
   const servigoAlquilerLogoImg = '/assets/aistudio/Gemini_Generated_Image_igtdraigtdraigtd_37ae301b.jpg';
 
   return (
-    <header className="bg-orange-600 text-white sticky top-0 z-40 shadow-lg">
-      {/* Sponsor Top Strip & Module Quick Hub */}
-      <div className="bg-orange-700 text-orange-100 text-xs font-bold py-1.5 px-3 sm:px-4 flex items-center justify-between border-b border-orange-500/40">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <span className="bg-white text-orange-700 text-[10px] px-2 py-0.5 rounded-full tracking-wide uppercase font-black shadow-xs">
-            AUSPICIADOR OFICIAL
+    <header className="bg-sg-navy text-white sticky top-0 z-40 shadow-lg font-sans">
+      {/* Barra superior: logo + módulo actual + acceso */}
+      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onOpenWelcomeHub}
+          className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+          title="Ir al inicio"
+        >
+          <img src={servigoIcon} alt="" className="w-9 h-9 rounded-[10px] object-cover shrink-0" />
+          <span className="font-black text-xl tracking-tight">ServiGo</span>
+          <span
+            className={`text-[11px] font-extrabold uppercase tracking-[0.05em] px-2 py-0.5 rounded-full ${
+              isAlquilerActive
+                ? 'bg-sg-green text-[#052e16]'
+                : isDeliveryActive || activeTab === 'cadetes'
+                ? 'bg-sg-orange text-[#2a1300]'
+                : 'bg-sg-blue text-white'
+            }`}
+          >
+            {isAlquilerActive ? 'Alquiler' : isDeliveryActive ? 'Delivery' : activeTab === 'cadetes' ? 'Cadetes' : 'Servicios'}
           </span>
-          <span className="truncate hidden sm:inline">Ferretería Bruzzone • Red de Profesionales y Comercios</span>
-        </div>
+        </button>
 
-        {/* Action triggers in top strip */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {/* User Auth Quick Button */}
+        {/* Selector de módulos (pantallas grandes; en celular está la barra de abajo) */}
+        <nav aria-label="Módulos" className="hidden sm:flex items-center gap-1.5">
+          {([
+            { id: 'search', label: 'Servicios', icon: Wrench, on: !isDeliveryActive && !isAlquilerActive && activeTab !== 'cadetes', cls: 'bg-sg-blue text-white' },
+            { id: 'delivery', label: 'Delivery', icon: Bike, on: isDeliveryActive || activeTab === 'cadetes', cls: 'bg-sg-orange text-[#2a1300]' },
+            { id: 'alquiler', label: 'Alquiler', icon: RotateCcw, on: isAlquilerActive, cls: 'bg-sg-green text-[#052e16]' },
+          ] as const).map((m) => {
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setActiveTab(m.id)}
+                aria-current={m.on ? 'page' : undefined}
+                className={`h-10 px-3.5 rounded-xl text-sm font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  m.on ? `${m.cls} font-extrabold` : 'text-[#c3cfea] hover:bg-white/10'
+                }`}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                {m.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onOpenPdfGuide && (
+            <button
+              type="button"
+              onClick={onOpenPdfGuide}
+              aria-label="Guía para sumarte"
+              title="Guía para sumarte"
+              className="hidden sm:inline-flex w-10 h-10 rounded-full border border-white/25 items-center justify-center hover:bg-white/10 cursor-pointer"
+            >
+              <FileText className="w-4.5 h-4.5" aria-hidden="true" />
+            </button>
+          )}
+          {isAdminAuthenticated && onOpenAdminPanel && (
+            <button
+              type="button"
+              onClick={onOpenAdminPanel}
+              className="h-10 px-3 rounded-full bg-amber-400 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1 hover:bg-amber-300 cursor-pointer"
+            >
+              <Settings className="w-4 h-4" aria-hidden="true" />
+              Creador
+            </button>
+          )}
           {currentUser ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/60 border border-orange-400/30">
-              <span className="text-[10px] font-bold text-white truncate max-w-[100px] sm:max-w-[140px]" title={currentUser.email || currentUser.displayName || ''}>
-                👤 {currentUser.displayName || currentUser.email?.split('@')[0]}
+            <div className="flex items-center gap-1 h-10 pl-3 pr-1 rounded-full bg-white/10 border border-white/15">
+              <span className="text-xs font-bold truncate max-w-[90px] sm:max-w-[140px]" title={currentUser.email || currentUser.displayName || ''}>
+                {currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
               </span>
               <button
+                type="button"
                 onClick={() => logout()}
-                className="p-0.5 rounded-full hover:bg-orange-800 text-orange-200 hover:text-white transition-colors cursor-pointer"
-                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
+                className="w-8 h-8 rounded-full inline-flex items-center justify-center hover:bg-white/15 cursor-pointer"
               >
-                <LogOut className="w-3 h-3" />
+                <LogOut className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => openAuthModal('Inicia sesión para gestionar tus publicaciones, reservas y billetera.')}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-950 text-white hover:bg-slate-900 font-black text-[10px] transition-all shadow-xs cursor-pointer border border-slate-700 active:scale-95"
+              className="h-10 px-3.5 rounded-full border border-white/30 font-bold text-sm inline-flex items-center gap-1.5 hover:bg-white/10 cursor-pointer"
             >
-              <LogIn className="w-3 h-3 text-orange-400" />
-              <span>Ingresar</span>
-            </button>
-          )}
-          {onOpenWelcomeHub && (
-            <button
-              onClick={onOpenWelcomeHub}
-              className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white text-orange-950 hover:bg-orange-50 border border-orange-300 font-black text-[11px] transition-all shadow-xs cursor-pointer active:scale-95"
-              title="Volver a la pantalla de selección inicial"
-            >
-              <Home className="w-3.5 h-3.5 text-orange-600" />
-              <span>🏠 Volver al Comienzo</span>
-            </button>
-          )}
-
-          {onOpenPdfGuide && (
-            <button
-              onClick={onOpenPdfGuide}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] hover:bg-amber-300 transition-all shadow-xs cursor-pointer"
-              title="Descargar o ver la guía en PDF de cómo registrarse"
-            >
-              <FileText className="w-3 h-3 text-slate-950" />
-              <span className="hidden xs:inline">📄 Guía PDF</span>
-            </button>
-          )}
-
-          {onOpenShopDashboard && (
-            <button
-              onClick={onOpenShopDashboard}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white font-black text-[10px] transition-all shadow-xs cursor-pointer"
-              title="Abrir el ShopDashboardModal para dueños de comercios"
-            >
-              <Store className="w-3 h-3 text-white" />
-              <span>🏪 Dueños Comercios</span>
-            </button>
-          )}
-
-          {/* Admin Creator Trigger Link */}
-          {onOpenAdminPanel && (
-            <button
-              onClick={onOpenAdminPanel}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 hover:bg-slate-950 text-amber-300 font-extrabold text-[10px] transition-all border border-amber-400/30 shadow-xs cursor-pointer"
-              title="Panel Administrador del Creador"
-            >
-              <Settings className="w-3 h-3 text-amber-400" />
-              <span>{isAdminAuthenticated ? '👑 Admin' : '⚙️ Creador'}</span>
+              <LogIn className="w-4 h-4 hidden sm:block" aria-hidden="true" />
+              Ingresar
             </button>
           )}
         </div>
       </div>
-
-      {/* Main Brand & Logo Header */}
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-3">
-        {/* Logo Section: Differentiates ServiGo Alquiler vs ServiGo Delivery vs ServiGo Servicios */}
-        <div className="flex items-center gap-2 sm:gap-3 select-none min-w-0">
-          {isAlquilerActive ? (
-            /* BRAND FOR ALQUILER (ESTILO GIVY) */
-            <div
-              onClick={() => setActiveTab('alquiler')}
-              className="flex items-center gap-2.5 cursor-pointer group"
-              title="ServiGo Alquiler de Productos"
-            >
-              <img
-                src={servigoAlquilerLogoImg}
-                alt="ServiGo Alquiler de Productos"
-                className="h-10 sm:h-12 w-auto object-contain rounded-xl shadow-md bg-white p-0.5 border border-emerald-400 shrink-0"
-              />
-              <div className="hidden xs:block">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                    Servi<span className="text-amber-300">Go</span>
-                  </span>
-                  <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-emerald-400 uppercase">
-                    Alquiler
-                  </span>
-                </div>
-                <p className="text-[10px] text-orange-100 font-semibold mt-0.5 truncate max-w-[200px] sm:max-w-none">
-                  Alquiler de cosas & herramientas
-                </p>
-              </div>
-            </div>
-          ) : isDeliveryActive ? (
-            /* BRAND FOR DELIVERY */
-            <div
-              onClick={() => setActiveTab('delivery')}
-              className="flex items-center gap-2.5 cursor-pointer group"
-              title="ServiGo Delivery Oficial - Comercios de Comida"
-            >
-              <img
-                src={servigoDeliveryLogoImg}
-                alt="ServiGo Delivery"
-                className="h-10 sm:h-12 w-auto object-contain rounded-xl shadow-md bg-white p-0.5 border border-orange-400 shrink-0"
-              />
-              <div className="hidden xs:block">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                    Servi<span className="text-amber-300">Go</span>
-                  </span>
-                  <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-orange-300 uppercase">
-                    Delivery
-                  </span>
-                </div>
-                <p className="text-[10px] text-orange-100 font-semibold mt-0.5 truncate max-w-[200px] sm:max-w-none">
-                  Comercios de comida & envíos en minutos
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* BRAND FOR SERVICIOS */
-            <div
-              onClick={() => setActiveTab('search')}
-              className="flex items-center gap-2.5 cursor-pointer group"
-              title="ServiGo Servicios Oficial - Oficios y Reparaciones"
-            >
-              <img
-                src={servigoOfficialLogo}
-                alt="ServiGo Servicios"
-                className="h-10 sm:h-12 w-auto object-contain rounded-xl shadow-md bg-white p-0.5 border border-blue-400 shrink-0"
-              />
-              <div className="hidden xs:block">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                    Servi<span className="text-amber-300">Go</span>
-                  </span>
-                  <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-blue-400 uppercase">
-                    Servicios
-                  </span>
-                </div>
-                <p className="text-[10px] text-orange-100 font-semibold mt-0.5 truncate max-w-[200px] sm:max-w-none">
-                  {customTagline || 'La solución que buscas, está aquí.'}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 3 Pillars Direct Switcher: Servicios, Delivery, Alquiler */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Module 1: Servicios */}
-          <button
-            onClick={() => setActiveTab('search')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              !isDeliveryActive && !isAlquilerActive
-                ? 'bg-white text-blue-700 shadow-md font-black'
-                : 'bg-orange-700/80 hover:bg-orange-700 text-orange-100'
-            }`}
-            title="Ir a Servicios & Profesionales"
-          >
-            <Wrench className="w-3 h-3 text-blue-500" />
-            <span className="hidden sm:inline">Servicios</span>
-          </button>
-
-          {/* Module 2: Delivery */}
-          <button
-            onClick={() => setActiveTab('delivery')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              isDeliveryActive
-                ? 'bg-white text-orange-700 shadow-md font-black'
-                : 'bg-orange-700/80 hover:bg-orange-700 text-orange-100'
-            }`}
-            title="Ir a Delivery & Comidas"
-          >
-            <Bike className="w-3 h-3 text-orange-500" />
-            <span className="hidden sm:inline">Delivery</span>
-          </button>
-
-          {/* Module 3: Alquiler */}
-          <button
-            onClick={() => setActiveTab('alquiler')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              isAlquilerActive
-                ? 'bg-white text-emerald-700 shadow-md font-black'
-                : 'bg-emerald-700/80 hover:bg-emerald-700 text-white'
-            }`}
-            title="Ir a Alquiler de Productos"
-          >
-            <RotateCcw className="w-3 h-3 text-emerald-300" />
-            <span className="font-black">Alquiler</span>
-          </button>
-        </div>
-      </div>
-
 
       {/* Navigation Tabs Bar */}
-      <div className="bg-white border-b border-slate-200/80 text-slate-700 px-2 sm:px-3 py-1 shadow-xs">
+      <div className={`${isAlquilerActive ? 'hidden' : ''} bg-white border-b border-slate-200/80 text-slate-700 px-2 sm:px-3 py-1 shadow-xs`}>
         <div className="max-w-7xl mx-auto flex items-center justify-start gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           {/* BOTÓN VOLVER AL COMIENZO (Siempre disponible) */}
           {onOpenWelcomeHub && (
             <button
               onClick={onOpenWelcomeHub}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 bg-slate-900 text-amber-300 hover:bg-slate-800 shadow-xs cursor-pointer active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 bg-slate-900 text-white hover:bg-slate-800 shadow-xs cursor-pointer active:scale-95"
               title="Volver al menú de inicio y selector de módulos"
             >
               <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-              <span>🏠 Volver al Comienzo</span>
+              <span>Inicio</span>
             </button>
           )}
 

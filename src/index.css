@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-sg-navy: #0a1633;
+  --color-sg-navy-2: #13254d;
+  --color-sg-navy-3: #071027;
+  --color-sg-blue: #1f6fe0;
+  --color-sg-orange: #ff8a1f;
+  --color-sg-green: #3ccf6e;
+  --color-sg-muted: #b9c6e4;
+}
+
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
