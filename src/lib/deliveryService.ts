@@ -48,12 +48,12 @@ export function handleDeliveryFirestoreError(error: unknown, operation: string, 
 // ============================================================================
 
 const DEFAULT_LOCAL_USER: UserProfile = {
-  id: 'usr_cliente_demo',
-  name: 'Mariano Rodríguez',
-  phone: '+54 9 358 512-9988',
-  email: 'mariano.rodriguez@gmail.com',
+  id: 'usr_cliente_local',
+  name: '',
+  phone: '',
+  email: '',
   role: 'client',
-  deliveryAddress: 'Av. San Martín 820, Alejandro Roca',
+  deliveryAddress: '',
   coordinates: {
     lat: -33.3524,
     lng: -63.7214,

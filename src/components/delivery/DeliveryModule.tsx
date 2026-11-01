@@ -58,12 +58,12 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
   });
 
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    id: 'usr_cliente_demo',
-    name: 'Mariano Rodríguez',
-    phone: '+54 9 358 512-9988',
-    email: 'mariano.rodriguez@gmail.com',
+    id: 'usr_cliente_local',
+    name: '',
+    phone: '',
+    email: '',
     role: 'client',
-    deliveryAddress: 'Av. San Martín 820, Alejandro Roca',
+    deliveryAddress: '',
     coordinates: {
       lat: -33.3524,
       lng: -63.7214,
@@ -159,14 +159,6 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
               </button>
             )}
 
-            <button
-              onClick={() => setIsShopDashboardModalOpen(true)}
-              className="px-3 py-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-              title="Abrir ShopDashboardModal para dueños de comercios"
-            >
-              <Store className="w-4 h-4 text-slate-950" />
-              <span>🏪 Shop Dashboard (Modal)</span>
-            </button>
           </div>
 
           {/* Dual Role Switcher Tabs */}
@@ -206,7 +198,7 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
           {activeMode === 'client' ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-orange-900 font-extrabold text-xs">
               <User className="w-3.5 h-3.5 text-orange-600" />
-              <span>Cliente Activo: <strong>{userProfile.name}</strong> ({userProfile.deliveryAddress})</span>
+              <span>{userProfile.deliveryAddress ? <>Enviar a: <strong>{userProfile.deliveryAddress}</strong></> : 'Cargá tus datos de envío antes de pedir'}</span>
             </span>
           ) : loggedMerchant ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 text-amber-300 font-extrabold text-xs">
@@ -230,13 +222,6 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
             <span>Editar Datos de Envío</span>
           </button>
 
-          <button
-            onClick={() => setShowVercelNotes(!showVercelNotes)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-          >
-            <FileCode2 className="w-3.5 h-3.5 text-blue-600" />
-            <span>Guía Despliegue Vercel</span>
-          </button>
         </div>
       </div>
 
