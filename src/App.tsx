@@ -1303,7 +1303,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-orange-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-24 sm:bottom-5 right-5 left-5 sm:left-auto z-50 bg-slate-900 text-white font-bold text-xs sm:text-sm py-3.5 px-5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
+        <div className="fixed bottom-24 sm:bottom-5 right-5 left-5 sm:left-auto z-[100] bg-slate-900 text-white font-bold text-xs sm:text-sm py-3.5 px-5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>

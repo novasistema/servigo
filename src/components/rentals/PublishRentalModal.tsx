@@ -72,6 +72,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [manualUrl, setManualUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -141,9 +142,14 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
 
-    if (!title.trim() || !dailyPrice) {
-      showToast('Por favor completa el título y el precio por día');
+    if (!title.trim()) {
+      setFormError('Falta el título del producto.');
+      return;
+    }
+    if (!dailyPrice || Number(dailyPrice) <= 0) {
+      setFormError('Poné el precio por día.');
       return;
     }
 
@@ -220,11 +226,24 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSaveRentalItem(newItem, newOwner);
+      // Si la red tarda demasiado, avisamos en vez de quedar "Guardando..." para siempre
+      await Promise.race([
+        onSaveRentalItem(newItem, newOwner),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000)),
+      ]);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast('Hubo un error al guardar tu publicación.');
+      const code = String(err?.code || err?.message || '');
+      setFormError(
+        code.includes('permission')
+          ? 'No tenés permiso para publicar con esta cuenta. Cerrá sesión, volvé a ingresar y probá de nuevo.'
+          : code.includes('timeout')
+          ? 'La conexión está tardando mucho. Revisá internet y probá de nuevo.'
+          : code.includes('size') || code.includes('exceeds') || code.includes('too large')
+          ? 'Las fotos son muy pesadas. Probá con 1 o 2 fotos.'
+          : `No se pudo publicar. Detalle: ${code || 'desconocido'}`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -458,7 +477,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
 
           {/* STEP 2: PRODUCT DETAILS & UP TO 3 IMAGES */}
           {activeStep === 2 && (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Product Title */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -722,6 +741,12 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
                   />
                 </div>
               </div>
+
+              {formError && (
+                <p role="alert" className="m-0 p-3 rounded-xl bg-red-50 border border-red-300 text-red-800 text-sm font-semibold">
+                  {formError}
+                </p>
+              )}
 
               {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row gap-2 border-t border-slate-200">
