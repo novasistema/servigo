@@ -28,25 +28,12 @@ export const FerreteriaSponsorBanner: React.FC<FerreteriaSponsorBannerProps> = (
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Hero Sponsor Banner */}
-      <div className="relative rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 overflow-hidden shadow-sm text-white">
+      <div className="relative rounded-3xl bg-sg-navy-2 p-5 sm:p-6 overflow-hidden text-white">
         {/* Decorative background glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-8 space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40 text-xs font-black uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-              <span>AUSPICIADOR OFICIAL SERVIGO</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-              Ferretería <span className="text-orange-400">Bruzzone</span>
-            </h1>
-
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-              Potenciamos a la comunidad local uniendo a los mejores profesionales de la zona con insumos, herramientas y repuestos de máxima calidad para tu hogar o comercio.
-            </p>
-
             <div className="flex flex-wrap gap-2 pt-1">
               <a
                 href="https://ferreteriabruzzone.com.ar/tienda"

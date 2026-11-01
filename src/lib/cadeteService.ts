@@ -24,10 +24,12 @@ import { db, sanitizeForFirestore } from './firebase';
 import { Cadete, CadeteRequest, CadeteRequestStatus } from '../types';
 import { INITIAL_CADETES } from '../data/mockCadetes';
 
+const DEMO_CADETE_IDS = new Set(INITIAL_CADETES.map((c) => c.id));
+
 export const CADETES_COLLECTION = 'cadetes';
 export const CADETE_REQUESTS_COLLECTION = 'cadete_requests';
 
-const CADETES_LOCAL_STORAGE_KEY = 'servigo_cadetes_cache_v1';
+const CADETES_LOCAL_STORAGE_KEY = 'servigo_cadetes_cache_v2';
 const CADETE_SESSION_KEY = 'servigo_cadete_logged_session';
 
 /**
@@ -57,12 +59,9 @@ export function subscribeCadetes(callback: (cadetes: Cadete[]) => void): () => v
             console.warn('LocalStorage cache write error:', e);
           }
 
-          callback(loadedCadetes);
+          callback(loadedCadetes.filter((c) => !DEMO_CADETE_IDS.has(c.id)));
         } else {
-          // Si está vacío en Firestore, sembramos los iniciales
-          seedInitialCadetes().then(() => {
-            callback(INITIAL_CADETES);
-          });
+          callback([]);
         }
       },
       (error) => {
@@ -76,14 +75,14 @@ export function subscribeCadetes(callback: (cadetes: Cadete[]) => void): () => v
             console.error(e);
           }
         }
-        callback(INITIAL_CADETES);
+        callback([]);
       }
     );
 
     return unsubscribe;
   } catch (err) {
     console.error('Error starting subscribeCadetes:', err);
-    callback(INITIAL_CADETES);
+    callback([]);
     return () => {};
   }
 }

@@ -163,32 +163,10 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-6 sm:p-8 border border-slate-800 shadow-xl">
-        <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-12 top-0 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 text-xs font-black uppercase tracking-wider">
-              <Store className="w-3.5 h-3.5 text-orange-400" />
-              Guía de Comercios & Negocios Cercanos
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-              Encuentra Ferreterías, Talleres y Comercios en tu Zona
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-              Insumos de ferretería, repuestos para vehículos, materiales de construcción, electricidad y servicios técnicos. Compra en comercios locales adheridos con descuentos exclusivos.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setIsRegisterModalOpen(true)}
-            className="shrink-0 px-5 py-3 rounded-2xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-lg shadow-orange-500/25 flex items-center gap-2 hover:scale-102 active:scale-98"
-          >
-            <Plus className="w-4 h-4 text-slate-950" />
-            <span>Sumar mi Comercio / Taller</span>
-          </button>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setIsRegisterModalOpen(true)} className="h-12 px-5 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-2 cursor-pointer bg-sg-blue text-white">
+          <Plus className="w-4 h-4" aria-hidden="true" /> Sumar mi comercio
+        </button>
       </div>
 
       {/* Filters & Search Control Bar */}

@@ -303,31 +303,16 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-3 border-b border-slate-200 pb-5">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold">
-            <Wrench className="w-3.5 h-3.5" />
-            <span>Ingreso para Trabajadores y Profesionales</span>
-          </div>
-
-          {onOpenPdfGuide && (
-            <button
-              onClick={onOpenPdfGuide}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-xs active:scale-95"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Ver/Descargar Manual PDF</span>
-            </button>
-          )}
-        </div>
-        
-        <h2 className="text-2xl font-black text-slate-900">Únete a ServiGo</h2>
-        <p className="text-xs text-slate-500 max-w-lg mx-auto font-medium">
-          Publica tus datos, especialidad, disponibilidad y tarifas. Consigue clientes locales de forma rápida y segura con el auspicio de <strong>Ferretería Bruzzone</strong>.
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
+      {onOpenPdfGuide && (
+        <button
+          type="button"
+          onClick={onOpenPdfGuide}
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-orange-700 hover:text-orange-900 cursor-pointer"
+        >
+          <FileText className="w-4 h-4" aria-hidden="true" /> Ver la guía paso a paso (PDF)
+        </button>
+      )}
 
       {/* Steps Indicator */}
       <div className="grid grid-cols-3 gap-2 text-center text-xs">

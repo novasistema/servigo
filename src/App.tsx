@@ -78,12 +78,25 @@ import {
 import { extractUniqueZones, normalizeZoneKey, formatZoneName } from './lib/zoneUtils';
 import { Wrench, ShieldCheck, Sparkles, Building2, ExternalLink, Heart, Phone, MapPin, CheckCircle2, Settings, CloudCheck, FileText } from 'lucide-react';
 
+
+// Títulos de las sub-secciones de Servicios (se muestran en el encabezado común)
+const SERVICIOS_SUBTABS: Record<string, { title: string; text: string }> = {
+  register: { title: 'Sumate como trabajador', text: 'Creá tu perfil gratis y que los vecinos te encuentren y te escriban por WhatsApp.' },
+  jobs: { title: 'Bolsa de trabajo', text: 'Cargá tu CV o encontrá personal de la zona para tu obra o negocio.' },
+  shops: { title: 'Comercios', text: 'Comercios y talleres de Alejandro Roca y la zona.' },
+  remises: { title: 'Remises', text: 'Pedí un viaje o sumate como conductor.' },
+  ai: { title: 'Contanos el problema', text: 'Describí lo que te pasa y te decimos qué profesional necesitás.' },
+  bruzzone: { title: 'Ferretería Bruzzone', text: 'El auspiciante de ServiGo: materiales, herramientas y descuentos para la comunidad.' },
+  bookings: { title: 'Mis solicitudes', text: 'Los turnos y presupuestos que pediste a los profesionales.' },
+};
+const CADETES_META = { title: 'Cadetes', text: 'Mandados, retiros y traslados con cadetes de la zona.' };
+
 export default function App() {
   const { currentUser, requireAuth, openAuthModal, getIdToken } = useAuth();
 
   // Persistence State synced with Cloud Firestore
   const [workers, setWorkers] = useState<Worker[]>(() => {
-    const saved = localStorage.getItem('servigo_workers_v1');
+    const saved = localStorage.getItem('servigo_workers_v2');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -91,7 +104,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return INITIAL_WORKERS;
+    return [];
   });
 
   const [bookings, setBookings] = useState<BookingRequest[]>(() => {
@@ -108,7 +121,7 @@ export default function App() {
 
   const [banners, setBanners] = useState<PromotedBanner[]>(INITIAL_BANNERS);
   const [shops, setShops] = useState<Shop[]>(() => {
-    const saved = localStorage.getItem('servigo_shops_v1');
+    const saved = localStorage.getItem('servigo_shops_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -119,11 +132,11 @@ export default function App() {
         console.error(e);
       }
     }
-    return INITIAL_SHOPS;
+    return [];
   });
 
   const [remises, setRemises] = useState<RemisDriver[]>(() => {
-    const saved = localStorage.getItem('servigo_remises_v1');
+    const saved = localStorage.getItem('servigo_remises_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -134,7 +147,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return INITIAL_REMISES;
+    return [];
   });
 
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
@@ -173,7 +186,7 @@ export default function App() {
 
   // Job Profiles (Bolsa de Trabajo & RRHH)
   const [jobProfiles, setJobProfiles] = useState<JobProfile[]>(() => {
-    const saved = localStorage.getItem('servigo_job_profiles_v1');
+    const saved = localStorage.getItem('servigo_job_profiles_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -184,7 +197,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return INITIAL_JOB_PROFILES;
+    return [];
   });
 
   // Rental Items (ServiGo Alquiler de Productos)
@@ -261,9 +274,18 @@ export default function App() {
 
   // Subscribe to Cloud Firestore in Realtime
   useEffect(() => {
+    // Los datos de demostración que pudieron quedar sembrados nunca se muestran
+    const demoIds = new Set<string>([
+      ...INITIAL_WORKERS.map((w) => w.id),
+      ...INITIAL_SHOPS.map((x) => x.id),
+      ...INITIAL_REMISES.map((r) => r.id),
+      ...INITIAL_JOB_PROFILES.map((j) => j.id),
+    ]);
+    const real = <T extends { id: string }>(list: T[] | null | undefined): T[] => (list || []).filter((x) => !demoIds.has(x.id));
+
     const unsubscribeWorkers = subscribeWorkers((firestoreWorkers) => {
-      setWorkers(firestoreWorkers);
-      localStorage.setItem('servigo_workers_v1', JSON.stringify(firestoreWorkers));
+      setWorkers(real(firestoreWorkers));
+      localStorage.setItem('servigo_workers_v2', JSON.stringify(real(firestoreWorkers)));
       setIsCloudSynced(true);
     });
 
@@ -274,24 +296,20 @@ export default function App() {
     });
 
     const unsubscribeShops = subscribeShops((firestoreShops) => {
-      setShops(firestoreShops);
-      localStorage.setItem('servigo_shops_v1', JSON.stringify(firestoreShops));
+      setShops(real(firestoreShops));
+      localStorage.setItem('servigo_shops_v2', JSON.stringify(real(firestoreShops)));
       setIsCloudSynced(true);
     });
 
     const unsubscribeJobProfiles = subscribeJobProfiles((firestoreJobProfiles) => {
-      if (firestoreJobProfiles && firestoreJobProfiles.length > 0) {
-        setJobProfiles(firestoreJobProfiles);
-        localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(firestoreJobProfiles));
-      }
+      setJobProfiles(real(firestoreJobProfiles));
+      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(real(firestoreJobProfiles)));
       setIsCloudSynced(true);
     });
 
     const unsubscribeRemises = subscribeRemises((firestoreRemises) => {
-      if (firestoreRemises && firestoreRemises.length > 0) {
-        setRemises(firestoreRemises);
-        localStorage.setItem('servigo_remises_v1', JSON.stringify(firestoreRemises));
-      }
+      setRemises(real(firestoreRemises));
+      localStorage.setItem('servigo_remises_v2', JSON.stringify(real(firestoreRemises)));
       setIsCloudSynced(true);
     });
 
@@ -386,7 +404,7 @@ export default function App() {
 
   // Save to LocalStorage fallback cache
   useEffect(() => {
-    localStorage.setItem('servigo_workers_v1', JSON.stringify(workers));
+    localStorage.setItem('servigo_workers_v2', JSON.stringify(workers));
   }, [workers]);
 
   useEffect(() => {
@@ -394,15 +412,15 @@ export default function App() {
   }, [bookings]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_shops_v1', JSON.stringify(shops));
+    localStorage.setItem('servigo_shops_v2', JSON.stringify(shops));
   }, [shops]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(jobProfiles));
+    localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(jobProfiles));
   }, [jobProfiles]);
 
   useEffect(() => {
-    localStorage.setItem('servigo_remises_v1', JSON.stringify(remises));
+    localStorage.setItem('servigo_remises_v2', JSON.stringify(remises));
   }, [remises]);
 
   useEffect(() => {
@@ -578,7 +596,7 @@ export default function App() {
     setJobProfiles((prev) => {
       const exists = prev.some((p) => p.id === profile.id);
       const updated = exists ? prev.map((p) => (p.id === profile.id ? profile : p)) : [profile, ...prev];
-      localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(updated));
+      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(updated));
       return updated;
     });
     showToast('🎉 ¡Tu Currículum Vitae fue publicado exitosamente en la Bolsa de Trabajo!');
@@ -593,7 +611,7 @@ export default function App() {
   const handleDeleteJobProfile = async (profileId: string) => {
     setJobProfiles((prev) => {
       const updated = prev.filter((p) => p.id !== profileId);
-      localStorage.setItem('servigo_job_profiles_v1', JSON.stringify(updated));
+      localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(updated));
       return updated;
     });
     showToast('Perfil de currículum eliminado.');
@@ -1195,10 +1213,10 @@ export default function App() {
           }}
           onClearAllData={async () => {
             await clearAllFirestoreData();
-            localStorage.removeItem('servigo_workers_v1');
+            localStorage.removeItem('servigo_workers_v2');
             localStorage.removeItem('servigo_bookings_v1');
-            localStorage.removeItem('servigo_shops_v1');
-            localStorage.removeItem('servigo_remises_v1');
+            localStorage.removeItem('servigo_shops_v2');
+            localStorage.removeItem('servigo_remises_v2');
             setWorkers([]);
             setBookings([]);
             setShops([]);
@@ -1209,10 +1227,10 @@ export default function App() {
           }}
           onResetToDefaults={async () => {
             await resetFirestoreToDefaults();
-            localStorage.removeItem('servigo_workers_v1');
+            localStorage.removeItem('servigo_workers_v2');
             localStorage.removeItem('servigo_bookings_v1');
-            localStorage.removeItem('servigo_shops_v1');
-            localStorage.removeItem('servigo_remises_v1');
+            localStorage.removeItem('servigo_shops_v2');
+            localStorage.removeItem('servigo_remises_v2');
             showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
           }}
           showToast={showToast}
@@ -1249,7 +1267,24 @@ export default function App() {
       />
 
       {/* App Body Content */}
-      <main className={`flex-1 pb-28 sm:pb-16 ${activeTab === 'alquiler' || activeTab === 'search' ? 'bg-sg-navy' : ''}`}>
+      <main
+        className={`flex-1 pb-10 sm:pb-16 ${activeTab === 'alquiler' || activeTab === 'search' ? 'bg-sg-navy' : ''} ${
+          SERVICIOS_SUBTABS[activeTab] ? 'theme-servicios' : ''
+        }`}
+      >
+        {/* Encabezado común para las sub-secciones */}
+        {(SERVICIOS_SUBTABS[activeTab] || activeTab === 'cadetes') && (
+          <div className="bg-sg-navy text-white font-sans">
+            <div className="max-w-7xl mx-auto px-5 pt-5 pb-6 space-y-1.5">
+              <h1 className="m-0 text-[28px] sm:text-4xl font-black tracking-[-0.03em] leading-tight">
+                {(SERVICIOS_SUBTABS[activeTab] || CADETES_META).title}
+              </h1>
+              <p className="m-0 text-[15px] leading-snug text-[#c3cfea] max-w-2xl">
+                {(SERVICIOS_SUBTABS[activeTab] || CADETES_META).text}
+              </p>
+            </div>
+          </div>
+        )}
         {/* TAB 1: WORKERS SEARCH & DISCOVERY CATALOG */}
         {activeTab === 'search' && (
           <div>
@@ -1619,10 +1654,10 @@ export default function App() {
         }}
         onClearAllData={async () => {
           await clearAllFirestoreData();
-          localStorage.removeItem('servigo_workers_v1');
+          localStorage.removeItem('servigo_workers_v2');
           localStorage.removeItem('servigo_bookings_v1');
-          localStorage.removeItem('servigo_shops_v1');
-          localStorage.removeItem('servigo_remises_v1');
+          localStorage.removeItem('servigo_shops_v2');
+          localStorage.removeItem('servigo_remises_v2');
           setWorkers([]);
           setBookings([]);
           setShops([]);
@@ -1633,10 +1668,10 @@ export default function App() {
         }}
         onResetToDefaults={async () => {
           await resetFirestoreToDefaults();
-          localStorage.removeItem('servigo_workers_v1');
+          localStorage.removeItem('servigo_workers_v2');
           localStorage.removeItem('servigo_bookings_v1');
-          localStorage.removeItem('servigo_shops_v1');
-          localStorage.removeItem('servigo_remises_v1');
+          localStorage.removeItem('servigo_shops_v2');
+          localStorage.removeItem('servigo_remises_v2');
           showToast('🔄 Base de datos restablecida a los valores iniciales de demostración.');
         }}
         rentalBookings={rentalBookings}
@@ -1648,60 +1683,22 @@ export default function App() {
         showToast={showToast}
       />
 
-      {/* Global Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 px-4 mt-auto">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-white font-black text-lg">
-              <span>Servi<span className="text-amber-400">Go</span></span>
-              <span className="text-xs font-normal text-slate-500">• Red de Servicios y Comercios</span>
-            </div>
-            <p className="text-slate-400 text-xs">
-              Plataforma móvil de búsqueda rápida y contratación de profesionales, ferreterías, talleres mecánicos y comercios locales.
-            </p>
-          </div>
-
-          <div className="bg-slate-800/80 border border-slate-700 p-3.5 rounded-2xl flex items-center justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider block">
-                AUSPICIADOR PRINCIPAL
-              </span>
-              <span className="font-bold text-white text-xs block">
-                Ferretería Bruzzone
-              </span>
-              <span className="text-[11px] text-slate-300">
-                Líder en herramientas e insumos aprobados
-              </span>
-            </div>
-            <a
-              href="https://ferreteriabruzzone.com.ar"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-1.5 px-3 rounded-xl bg-orange-600 text-white font-bold text-xs whitespace-nowrap hover:bg-orange-500 transition-colors shadow-xs"
-            >
-              Visitar Web
+      {/* Pie de página */}
+      <footer className="bg-sg-navy-3 border-t border-white/10 text-sg-muted text-sm font-sans pt-6 pb-28 sm:pb-6 px-5 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="m-0">
+            <b className="text-white">ServiGo</b> · Alejandro Roca y zona · Auspicia{' '}
+            <a href="https://ferreteriabruzzone.com.ar" target="_blank" rel="noopener noreferrer" className="font-bold text-white underline-offset-2 hover:underline">
+              Ferretería Bruzzone
             </a>
-          </div>
-
-          <div className="text-left md:text-right space-y-2 text-slate-400">
-            <p>© {new Date().getFullYear()} ServiGo • La solución que buscas, está aquí.</p>
-            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
-              <button
-                onClick={() => setIsPdfGuideOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all shadow-xs"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>📄 Descargar Guía PDF</span>
-              </button>
-
-              <button
-                onClick={() => setIsAdminModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-xs"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>Administrador del Creador</span>
-              </button>
-            </div>
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <button type="button" onClick={() => setIsPdfGuideOpen(true)} className="font-semibold hover:text-white cursor-pointer">
+              Guía para sumarte
+            </button>
+            <button type="button" onClick={() => setIsAdminModalOpen(true)} className="font-semibold hover:text-white cursor-pointer">
+              Acceso creador
+            </button>
           </div>
         </div>
       </footer>

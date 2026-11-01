@@ -170,55 +170,14 @@ export const RemisesSection: React.FC<RemisesSectionProps> = ({
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Hero Banner Uber/Cabify Style */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-zinc-900 to-amber-950 text-white p-6 sm:p-10 shadow-2xl border border-slate-800">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/40 text-orange-400 text-xs font-black tracking-wide uppercase">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-orange-400" />
-              Red de Movilidad & Remises en Vivo
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-              Pedí tu Remis al Instante en <span className="text-orange-400">ServiGo</span> 🚕
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-              Visualizá los remiseros disponibles en tu zona, cotizá tu viaje con tarifa transparente y conectá directamente por WhatsApp sin intermediarios ni comisiones ocultas.
-            </p>
-
-            <div className="pt-2 flex flex-wrap gap-3">
-              <button
-                onClick={() => setIsRegisterModalOpen(true)}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-black text-xs shadow-lg shadow-orange-500/25 flex items-center gap-2 transition-all cursor-pointer transform hover:-translate-y-0.5"
-              >
-                <Plus className="w-4 h-4" /> Sumarme como Conductor / Remisero
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Stats Widget */}
-          <div className="lg:col-span-5 bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="text-center p-3 rounded-xl bg-white/5">
-              <div className="text-2xl font-black text-amber-400">
-                {remises.filter((r) => r.status === 'disponible').length}
-              </div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                🟢 Disponibles
-              </div>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-white/5">
-              <div className="text-2xl font-black text-white">{remises.length}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                🚗 Flota Total
-              </div>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 col-span-2 sm:col-span-1">
-              <div className="text-2xl font-black text-emerald-400">100%</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                Directo WhatsApp
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => setIsRegisterModalOpen(true)} className="h-12 px-5 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-2 cursor-pointer bg-sg-blue text-white">
+          <Plus className="w-4 h-4" aria-hidden="true" /> Sumarme como conductor
+        </button>
+        <span className="text-sm font-bold text-emerald-700 inline-flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+          {remises.filter((r) => r.status === 'disponible').length} disponibles
+        </span>
       </div>
 
       {/* Main Grid: Ride Requester & Interactive Map */}

@@ -30,7 +30,7 @@ interface CadetesSectionProps {
 }
 
 export const CadetesSection: React.FC<CadetesSectionProps> = ({ showToast }) => {
-  const [cadetes, setCadetes] = useState<Cadete[]>(INITIAL_CADETES);
+  const [cadetes, setCadetes] = useState<Cadete[]>([]);
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(true); // Por defecto muestra los disponibles en el momento
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -88,46 +88,16 @@ export const CadetesSection: React.FC<CadetesSectionProps> = ({ showToast }) => 
       {/* ================================================================ */}
       {/* HEADER BANNER */}
       {/* ================================================================ */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="bg-orange-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
-                MÓDULO DE CADETERÍA URBANA
-              </span>
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                <span>{availableCount} Cadetes Disponibles Ahora</span>
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-              🛵 Cadetes, Mandados & Envíos con Ubicación
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Encuentra al cadete que esté libre en este momento, contáctalo al instante o envíale tu ubicación GPS para que retire tu pedido o mandado en minutos.
-            </p>
-          </div>
-
-          {/* Action buttons: Register vs Dashboard */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            <button
-              onClick={() => setIsRegisterModalOpen(true)}
-              className="py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-            >
-              <Plus className="w-4 h-4 text-orange-600" />
-              <span>Registrarme como Cadete</span>
-            </button>
-
-            <button
-              onClick={() => setIsDashboardModalOpen(true)}
-              className="py-3 px-4 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition-all shadow-md shadow-orange-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-            >
-              <Power className="w-4 h-4" />
-              <span>Panel del Cadete (Mis Notificaciones)</span>
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button type="button" onClick={() => setIsRegisterModalOpen(true)} className="h-12 px-5 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-2 cursor-pointer bg-sg-orange text-[#2a1300]">
+          <Plus className="w-4 h-4" aria-hidden="true" /> Quiero ser cadete
+        </button>
+        <button type="button" onClick={() => setIsDashboardModalOpen(true)} className="h-12 px-5 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-2 cursor-pointer border border-slate-300 bg-white text-slate-900">
+          <Power className="w-4 h-4" aria-hidden="true" /> Panel del cadete
+        </button>
+        <span className="sm:ml-auto self-start sm:self-center text-sm font-bold text-emerald-700 inline-flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" /> {availableCount} disponibles ahora
+        </span>
       </div>
 
       {/* ================================================================ */}

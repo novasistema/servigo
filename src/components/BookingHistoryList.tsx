@@ -17,23 +17,13 @@ export const BookingHistoryList: React.FC<BookingHistoryListProps> = ({
 }) => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="bg-white border border-slate-200 rounded-[32px] p-5 sm:p-6 shadow-sm flex items-center justify-between">
-        <div>
-          <span className="text-xs font-bold text-orange-600 uppercase tracking-wider block">
-            Gestión de Agenda
-          </span>
-          <h2 className="text-xl font-black text-slate-900">Mis Solicitudes de Servicio</h2>
-          <p className="text-xs text-slate-500 font-medium">
-            Historial de turnos y presupuestos coordinados con los trabajadores de ServiGo.
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <button
+          type="button"
           onClick={onNavigateToSearch}
-          className="py-2.5 px-4 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-sm transition-all shrink-0"
+          className="h-11 px-5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-sm cursor-pointer"
         >
-          + Solicitar Nuevo Turno
+          Pedir un nuevo turno
         </button>
       </div>
 

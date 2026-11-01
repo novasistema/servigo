@@ -72,24 +72,14 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onSelectTrade }) => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Intro Header */}
-      <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm space-y-4 relative overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-black uppercase tracking-wider w-fit">
-          <Sparkles className="w-3.5 h-3.5 text-orange-600 animate-pulse" />
-          <span>INTELIGENCIA ARTIFICIAL SERVIGO</span>
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-          Diagnóstico Técnico Inteligente
-        </h1>
-
-        <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-xl">
-          Describe con tus palabras la falla o problema de tu hogar. La IA de ServiGo identificará qué profesional necesitas, el nivel de urgencia y los materiales a comprar en <strong>Ferretería Bruzzone</strong>.
-        </p>
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-3 relative overflow-hidden">
+        <label htmlFor="ai-problema" className="block text-base font-extrabold text-slate-900">¿Qué problema tenés?</label>
 
         {/* Input Box */}
         <div className="space-y-3 pt-2">
           <div className="relative">
             <textarea
+              id="ai-problema"
               rows={3}
               value={problemDescription}
               onChange={(e) => setProblemDescription(e.target.value)}

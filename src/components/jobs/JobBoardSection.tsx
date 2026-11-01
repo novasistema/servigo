@@ -296,52 +296,29 @@ export const JobBoardSection: React.FC<JobBoardSectionProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 space-y-6">
       {/* Top Banner & Module Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-indigo-800/40 relative overflow-hidden">
-        {/* Background Decorative Rings */}
-        <div className="absolute -top-12 -right-12 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-black uppercase tracking-wider">
-              <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Módulo de RRHH & Talentos • ServiGo Servicios</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-              Bolsa de Trabajo de Oficios
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-              Encuentra personal calificado con currículum vitae comprobado por orden de oficio, o carga tu perfil laboral con ayuda de Inteligencia Artificial para ser contratado.
-            </p>
-          </div>
-
-          {/* Module Mode Switcher Pills */}
-          <div className="flex sm:flex-col items-stretch gap-2 shrink-0 bg-slate-950/60 p-2 rounded-2xl border border-indigo-500/30 shadow-inner">
-            <button
-              onClick={() => setViewMode('candidates')}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                viewMode === 'candidates'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Ver Candidatos ({jobProfiles.length})</span>
-            </button>
-
-            <button
-              onClick={() => setViewMode('post_cv')}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                viewMode === 'post_cv'
-                  ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>📝 Cargar Mi Currículum</span>
-            </button>
-          </div>
-        </div>
+      <div role="tablist" aria-label="Bolsa de trabajo" className="inline-flex w-full sm:w-auto gap-1 p-1 rounded-2xl bg-slate-200/70">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'candidates'}
+          onClick={() => setViewMode('candidates')}
+          className={`flex-1 sm:flex-none h-11 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+            viewMode === 'candidates' ? 'bg-white text-slate-900 font-extrabold shadow-xs' : 'text-slate-600 font-semibold'
+          }`}
+        >
+          <Briefcase className="w-4 h-4" aria-hidden="true" /> Buscar personal
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'post_cv'}
+          onClick={() => setViewMode('post_cv')}
+          className={`flex-1 sm:flex-none h-11 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+            viewMode === 'post_cv' ? 'bg-white text-slate-900 font-extrabold shadow-xs' : 'text-slate-600 font-semibold'
+          }`}
+        >
+          <UserPlus className="w-4 h-4" aria-hidden="true" /> Cargar mi CV
+        </button>
       </div>
 
       {/* ==================================================================== */}
