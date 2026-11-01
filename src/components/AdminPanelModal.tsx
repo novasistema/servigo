@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { AdminRentalItemsPanel } from './admin/AdminRentalItemsPanel';
 import { AdminConvenioPanel } from './admin/AdminConvenioPanel';
 import { AdminApprovalsPanel } from './admin/AdminApprovalsPanel';
+import { compressImageFile } from '../utils/imageCompression';
 import {
   X,
   Lock,
@@ -1074,12 +1075,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 font-bold mb-1">URL Imagen de Fondo / Foto</label>
+                          <span className="block text-slate-300 font-bold mb-1">Imagen del banner</span>
+                          <div className="flex flex-wrap items-center gap-3">
+                            {editingBanner.imageUrl && (
+                              <img src={editingBanner.imageUrl} alt="" className="w-24 h-14 rounded-lg object-cover bg-slate-800" />
+                            )}
+                            <label className="h-11 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 cursor-pointer">
+                              <ImageIcon className="w-4 h-4" aria-hidden="true" />
+                              Subir foto desde el celular
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                onChange={async (e) => {
+                                  const f = e.target.files?.[0];
+                                  if (!f) return;
+                                  try {
+                                    const dataUrl = await compressImageFile(f, 1200, 0.75);
+                                    setEditingBanner((prev: any) => ({ ...prev, imageUrl: dataUrl }));
+                                  } catch (err) {
+                                    console.error(err);
+                                    showToast('No se pudo cargar la imagen.');
+                                  }
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <label htmlFor="banner-img-url" className="block text-slate-400 text-[11px] font-semibold mt-2 mb-1">o pegá el enlace de una imagen</label>
                           <input
+                            id="banner-img-url"
                             type="url"
-                            value={editingBanner.imageUrl || ''}
+                            value={editingBanner.imageUrl?.startsWith('data:') ? '' : editingBanner.imageUrl || ''}
                             onChange={(e) => setEditingBanner({ ...editingBanner, imageUrl: e.target.value })}
-                            placeholder="https://images.unsplash.com/photo-..."
+                            placeholder="https://..."
                             className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
                           />
                         </div>
