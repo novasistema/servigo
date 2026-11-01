@@ -21,7 +21,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db, sanitizeForFirestore } from './firebase';
-import { Cadete, CadeteRequest, CadeteRequestStatus } from '../types';
+import { Cadete, CadeteRequest, CadeteRequestStatus, isPubliclyApproved } from '../types';
 import { INITIAL_CADETES } from '../data/mockCadetes';
 
 const DEMO_CADETE_IDS = new Set(INITIAL_CADETES.map((c) => c.id));
@@ -59,7 +59,7 @@ export function subscribeCadetes(callback: (cadetes: Cadete[]) => void): () => v
             console.warn('LocalStorage cache write error:', e);
           }
 
-          callback(loadedCadetes.filter((c) => !DEMO_CADETE_IDS.has(c.id)));
+          callback(loadedCadetes.filter((c) => !DEMO_CADETE_IDS.has(c.id) && isPubliclyApproved(c)));
         } else {
           callback([]);
         }

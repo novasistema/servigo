@@ -24,7 +24,7 @@ import {
   Star,
   Info
 } from 'lucide-react';
-import { RentalItem, RentalCategory, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport } from '../../types';
+import { isPubliclyApproved, RentalItem, RentalCategory, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport } from '../../types';
 import { RENTAL_CATEGORIES } from '../../data/mockRentals';
 import { RentalDetailModal } from './RentalDetailModal';
 import { PublishRentalModal } from './PublishRentalModal';
@@ -101,6 +101,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
       .filter((item) => {
         // Publicaciones pausadas por el dueño o el creador
         if (item.isAvailable === false) return false;
+        if (!isPubliclyApproved(item)) return false;
 
         // Category filter
         if (selectedCategory !== 'all' && item.category !== selectedCategory) {
@@ -156,7 +157,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
     currentUser &&
       bookings.some((b) => b.clientUid === currentUser.uid && b.status === 'entrega_pendiente' && b.entrega && !b.entrega.clientSignedAt)
   );
-  const visibleCount = items.filter((i) => i.isAvailable !== false).length;
+  const visibleCount = items.filter((i) => i.isAvailable !== false && isPubliclyApproved(i)).length;
 
   const openMyRentals = () =>
     currentUser ? setIsMyRentalsOpen(true) : requireAuth(() => setIsMyRentalsOpen(true), 'Ingresá para ver tus alquileres');

@@ -28,7 +28,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { INITIAL_WORKERS, BRUZZONE_PRODUCTS, INITIAL_SHOPS, INITIAL_REMISES } from './data/mockData';
 import { INITIAL_JOB_PROFILES } from './data/mockJobProfiles';
 import { INITIAL_RENTAL_ITEMS } from './data/mockRentals';
-import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop, RemisDriver, RideRequest, SystemCoupon, IssuedVoucher, JobProfile, RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport } from './types';
+import { Worker, BookingRequest, Review, TradeCategory, PromotedBanner, TabVisibilityConfig, AppConfig, CustomTradeOption, Shop, RemisDriver, RideRequest, SystemCoupon, IssuedVoucher, JobProfile, RentalItem, RentalBooking, RentalOwner, RentalPayoutRequest, DamageReport , isPubliclyApproved } from './types';
 import {
   subscribeWorkers,
   subscribeBookings,
@@ -453,8 +453,20 @@ export default function App() {
       else if (tabConfig.sponsor) setActiveTab('bruzzone');
       else if (tabConfig.ai) setActiveTab('ai');
       else if (tabConfig.bookings) setActiveTab('bookings');
-    } else if (activeTab === 'jobs' && tabConfig.jobs === false) {
-      setActiveTab('search');
+    } else {
+      const off: Record<string, boolean> = {
+        jobs: tabConfig.jobs === false,
+        shops: tabConfig.shops === false,
+        delivery: tabConfig.delivery === false,
+        cadetes: tabConfig.cadetes === false,
+        remises: tabConfig.remises === false,
+        register: tabConfig.register === false,
+        bruzzone: tabConfig.sponsor === false,
+        ai: tabConfig.ai === false,
+        bookings: tabConfig.bookings === false,
+        alquiler: tabConfig.alquiler === false,
+      };
+      if (off[activeTab]) setActiveTab('search');
     }
   }, [tabConfig, activeTab]);
 
@@ -498,6 +510,7 @@ export default function App() {
   // Filter and Sort Workers
   const filteredWorkers = useMemo(() => {
     return workers
+      .filter(isPubliclyApproved)
       .filter((w) => {
         // Trade filter
         if (selectedTrade !== 'all' && w.trade !== selectedTrade) {
@@ -564,8 +577,28 @@ export default function App() {
     sortBy,
   ]);
 
+  // Altas nuevas: quedan a nombre de la cuenta y pendientes hasta que el creador las apruebe
+  const PENDING_MSG = 'Lo revisamos y en breve aparece publicado.';
+  const stampNewListing = <T extends object>(x: T): T =>
+    ({
+      ...x,
+      ownerUid: (x as any).ownerUid || currentUser?.uid,
+      createdBy: (x as any).createdBy || currentUser?.uid,
+      approvalStatus: isAdminAuthenticated ? 'approved' : 'pending',
+    } as T);
+  const ensureSignedIn = (msg: string) => {
+    if (currentUser) return true;
+    openAuthModal(msg);
+    return false;
+  };
+
   // Handlers
   const handleSaveShop = async (shop: Shop) => {
+    const isNew = !shops.some((s) => s.id === shop.id);
+    if (isNew) {
+      if (!ensureSignedIn('Ingresá con tu cuenta para sumar tu comercio.')) return;
+      shop = stampNewListing(shop);
+    }
     // Optimistic UI update
     setShops((prev) => {
       const exists = prev.some((s) => s.id === shop.id);
@@ -574,12 +607,12 @@ export default function App() {
       }
       return [shop, ...prev];
     });
-    showToast(`¡Comercio "${shop.name}" guardado en la red ServiGo!`);
-
     try {
       await saveShopToFirestore(shop);
+      showToast(isNew && !isAdminAuthenticated ? `Recibimos "${shop.name}". ${PENDING_MSG}` : `Comercio "${shop.name}" guardado.`);
     } catch (err) {
       console.error('Failed to save shop to Firestore:', err);
+      showToast('No se pudo guardar el comercio. Probá de nuevo.');
     }
   };
 
@@ -593,18 +626,23 @@ export default function App() {
   };
 
   const handleSaveJobProfile = async (profile: JobProfile) => {
+    const isNew = !jobProfiles.some((p) => p.id === profile.id);
+    if (isNew) {
+      if (!ensureSignedIn('Ingresá con tu cuenta para publicar tu CV.')) return;
+      profile = stampNewListing(profile);
+    }
     setJobProfiles((prev) => {
       const exists = prev.some((p) => p.id === profile.id);
       const updated = exists ? prev.map((p) => (p.id === profile.id ? profile : p)) : [profile, ...prev];
       localStorage.setItem('servigo_job_profiles_v2', JSON.stringify(updated));
       return updated;
     });
-    showToast('🎉 ¡Tu Currículum Vitae fue publicado exitosamente en la Bolsa de Trabajo!');
-
     try {
       await saveJobProfileToFirestore(profile);
+      showToast(isNew && !isAdminAuthenticated ? `Recibimos tu CV. ${PENDING_MSG}` : 'CV guardado.');
     } catch (err) {
       console.error('Failed to save job profile to Firestore:', err);
+      showToast('No se pudo guardar el CV. Probá de nuevo.');
     }
   };
 
@@ -623,12 +661,15 @@ export default function App() {
   };
 
   const handleAddRemis = async (newRemis: RemisDriver) => {
+    if (!ensureSignedIn('Ingresá con tu cuenta para sumarte como conductor.')) return;
+    newRemis = stampNewListing(newRemis);
     setRemises((prev) => [newRemis, ...prev]);
-    showToast(`🚕 ¡Conductor ${newRemis.name} guardado con éxito!`);
     try {
       await saveRemisToFirestore(newRemis);
+      showToast(isAdminAuthenticated ? `Conductor ${newRemis.name} guardado.` : `Recibimos tus datos, ${newRemis.name}. ${PENDING_MSG}`);
     } catch (err) {
       console.error('Failed to save remis to Firestore:', err);
+      showToast('No se pudo guardar. Probá de nuevo.');
     }
   };
 
@@ -680,15 +721,16 @@ export default function App() {
   };
 
   const handleRegisterNewWorker = async (newWorker: Worker) => {
-    // Optimistic UI update
+    if (!ensureSignedIn('Ingresá con tu cuenta para publicar tu perfil de trabajador.')) return;
+    newWorker = stampNewListing(newWorker);
     setWorkers((prev) => [newWorker, ...prev]);
-    setActiveTab('search');
-    showToast(`¡Perfil publicado con éxito en la nube! Bienvenido ${newWorker.name} a ServiGo.`);
-
     try {
       await saveWorkerToFirestore(newWorker);
+      setActiveTab('search');
+      showToast(isAdminAuthenticated ? `Perfil de ${newWorker.name} publicado.` : `¡Gracias ${newWorker.name}! Recibimos tu perfil. ${PENDING_MSG}`);
     } catch (err) {
       console.error('Failed to sync worker to Firestore:', err);
+      showToast('No se pudo guardar tu perfil. Probá de nuevo.');
     }
   };
 
@@ -825,8 +867,10 @@ export default function App() {
 
   const handleSaveRentalItem = async (item: RentalItem, owner?: RentalOwner) => {
     try {
+      const isNewItem = !rentalItems.some((i) => i.id === item.id);
       const secureItem: RentalItem = {
         ...item,
+        ...(isNewItem ? { approvalStatus: isAdminAuthenticated ? 'approved' : 'pending' } : {}),
         ownerId: currentUser?.uid || item.ownerId || 'locador-demo',
         ownerUid: currentUser?.uid || item.ownerUid || 'locador-demo',
         createdBy: currentUser?.uid || item.createdBy || 'locador-demo',
@@ -856,7 +900,11 @@ export default function App() {
         });
       }
 
-      showToast(`¡"${item.title}" guardado en ServiGo Alquiler!`);
+      showToast(
+        isNewItem && !isAdminAuthenticated
+          ? `Recibimos "${item.title}". ${PENDING_MSG}`
+          : `"${item.title}" guardado en ServiGo Alquiler.`
+      );
     } catch (err: any) {
       console.error(err);
       showToast('Error al guardar artículo de alquiler.');
@@ -1089,6 +1137,16 @@ export default function App() {
     setIsWelcomeHubOpen(false);
   };
 
+  const hiddenBottomTabs: BottomTab[] = [
+    ...(tabConfig.delivery === false ? (['delivery'] as BottomTab[]) : []),
+    ...(tabConfig.alquiler === false ? (['alquiler'] as BottomTab[]) : []),
+  ];
+  const hiddenHubModules = [
+    ...(tabConfig.delivery === false ? (['delivery'] as const) : []),
+    ...(tabConfig.alquiler === false ? (['alquiler'] as const) : []),
+    ...(tabConfig.cadetes === false ? (['cadetes'] as const) : []),
+  ];
+
   const activeBottomTab: BottomTab = isWelcomeHubOpen
     ? 'inicio'
     : activeTab === 'alquiler'
@@ -1123,9 +1181,10 @@ export default function App() {
           onOpenPdfGuide={() => setIsPdfGuideOpen(true)}
           onOpenAdminPanel={() => setIsAdminModalOpen(true)}
           isAdminAuthenticated={isAdminAuthenticated}
+          hiddenModules={[...hiddenHubModules]}
         />
 
-        <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} />
+        <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} hidden={hiddenBottomTabs} />
 
         {/* Allow opening PDF Guide and Admin from Welcome Hub */}
         <RegistrationPdfGuideModal
@@ -1718,7 +1777,7 @@ export default function App() {
         />
       </ErrorBoundary>
 
-      <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} />
+      <BottomTabBar active={activeBottomTab} onSelect={goToBottomTab} hidden={hiddenBottomTabs} />
 
       {/* Welcome Portal / Module Redirection Modal */}
       <WelcomeHubModal

@@ -181,11 +181,23 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
           showToast={showToast}
         />
       ) : (
+        <>
+        {loggedMerchant.approvalStatus === 'pending' && (
+          <p role="status" className="m-0 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-sm font-semibold">
+            Tu local está en revisión. Mientras tanto cargá el menú; cuando lo aprobemos va a aparecer para los clientes.
+          </p>
+        )}
+        {loggedMerchant.approvalStatus === 'rejected' && (
+          <p role="alert" className="m-0 p-4 rounded-2xl bg-red-50 border border-red-300 text-red-900 text-sm font-semibold">
+            Tu local no fue aprobado{loggedMerchant.approvalNote ? `: ${loggedMerchant.approvalNote}` : '.'} Escribinos para revisarlo.
+          </p>
+        )}
         <MerchantOrdersPanel
           merchant={loggedMerchant}
           onLogout={() => setActiveMode('client')}
           showToast={showToast}
         />
+        </>
       )}
 
       {/* User Shipping & Profile Modal */}

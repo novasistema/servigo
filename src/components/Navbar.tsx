@@ -102,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             { id: 'search', label: 'Servicios', icon: Wrench, on: !isDeliveryActive && !isAlquilerActive && activeTab !== 'cadetes', cls: 'bg-sg-blue text-white' },
             { id: 'delivery', label: 'Delivery', icon: Utensils, on: isDeliveryActive || activeTab === 'cadetes', cls: 'bg-sg-orange text-[#2a1300]' },
             { id: 'alquiler', label: 'Alquiler', icon: RotateCcw, on: isAlquilerActive, cls: 'bg-sg-green text-[#052e16]' },
-          ] as const).map((m) => {
+          ] as const).filter((m) => (m.id === 'delivery' ? tabConfig.delivery !== false : m.id === 'alquiler' ? tabConfig.alquiler !== false : true)).map((m) => {
             const Icon = m.icon;
             return (
               <button
@@ -182,7 +182,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               { id: 'register', label: 'Soy trabajador', icon: UserPlus, show: tabConfig.register },
               { id: 'jobs', label: 'Bolsa de trabajo', icon: Briefcase, show: tabConfig.jobs !== false },
               { id: 'shops', label: 'Comercios', icon: Store, show: tabConfig.shops },
-              { id: 'cadetes', label: 'Cadetes', icon: Bike, show: true },
+              { id: 'cadetes', label: 'Cadetes', icon: Bike, show: tabConfig.cadetes !== false },
               { id: 'remises', label: 'Remises', icon: Car, show: tabConfig.remises !== false },
               { id: 'ai', label: 'Diagnóstico IA', icon: Sparkles, show: tabConfig.ai },
               { id: 'bruzzone', label: 'Ferretería Bruzzone', icon: ShoppingBag, show: tabConfig.sponsor },

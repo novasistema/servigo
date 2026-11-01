@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Cadete, CadeteVehicleType } from '../../types';
 import { saveCadete } from '../../lib/cadeteService';
+import { useAuth } from '../../context/AuthContext';
 
 interface CadeteRegisterModalProps {
   isOpen: boolean;
@@ -53,8 +54,14 @@ export const CadeteRegisterModal: React.FC<CadeteRegisterModalProps> = ({
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
   ];
 
+  const { currentUser, openAuthModal } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      openAuthModal('Ingresá con tu cuenta para registrarte como cadete.');
+      return;
+    }
     if (!name.trim() || !phone.trim() || !vehicleDescription.trim()) {
       if (showToast) showToast('Por favor completa todos los campos requeridos');
       return;
@@ -82,7 +89,10 @@ export const CadeteRegisterModal: React.FC<CadeteRegisterModalProps> = ({
         baseRate: Number(baseRate) || 1200,
         rating: 5.0,
         completedDeliveries: 0,
-        verified: true,
+        verified: false,
+        ownerUid: currentUser.uid,
+        createdBy: currentUser.uid,
+        approvalStatus: 'pending',
         pinCode: pinCode.trim() || '1234',
         accountUsername: name.toLowerCase().replace(/\s+/g, '_'),
         photoUrl: photoUrl || defaultAvatars[0],
@@ -92,7 +102,7 @@ export const CadeteRegisterModal: React.FC<CadeteRegisterModalProps> = ({
       await saveCadete(newCadete);
 
       if (showToast) {
-        showToast(`🎉 ¡Bienvenido ${newCadete.name}! Ya estás registrado como cadete disponible.`);
+        showToast(`¡Gracias ${newCadete.name}! Recibimos tus datos. Lo revisamos y en breve aparecés publicado.`);
       }
 
       if (onCadeteRegistered) {

@@ -6,6 +6,7 @@ import { subscribeRentalPlatformFee, saveRentalPlatformFeeToFirestore } from '..
 import { useAuth } from '../context/AuthContext';
 import { AdminRentalItemsPanel } from './admin/AdminRentalItemsPanel';
 import { AdminConvenioPanel } from './admin/AdminConvenioPanel';
+import { AdminApprovalsPanel } from './admin/AdminApprovalsPanel';
 import {
   X,
   Lock,
@@ -130,7 +131,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'rental_items' | 'convenio' | 'reset'>('rental_items');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'rental_items' | 'convenio' | 'reset'>('approvals');
+  const [pendingCount, setPendingCount] = useState(0);
   const { currentUser, isAdmin, loginWithGoogle, logout } = useAuth();
   const creatorVerified = Boolean(isAdmin && currentUser?.emailVerified);
   React.useEffect(() => {
@@ -228,7 +230,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   const handleToggleTab = (tabKey: keyof TabVisibilityConfig) => {
-    const updated = { ...localTabs, [tabKey]: !localTabs[tabKey] };
+    const updated = { ...localTabs, [tabKey]: localTabs[tabKey] === false };
     setLocalTabs(updated);
   };
 
@@ -608,6 +610,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {/* Tab Navigation Switches */}
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
               <button
+                type="button"
+                onClick={() => setActiveTab('approvals')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'approvals' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-emerald-300 hover:text-emerald-200'
+                }`}
+              >
+                <span>✅ Para aprobar</span>
+                {pendingCount > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-black inline-flex items-center justify-center">{pendingCount}</span>
+                )}
+              </button>
+
+              <button
                 onClick={() => setActiveTab('tabs')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'tabs'
@@ -738,6 +753,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>9. Borrar</span>
               </button>
+            </div>
+
+            {/* Mantener montado para que el contador se actualice */}
+            <div hidden={activeTab !== 'approvals'}>
+              <AdminApprovalsPanel showToast={showToast} onCountChange={setPendingCount} />
             </div>
 
             {/* TAB 1: VISIBILIDAD DE SOLAPAS Y LOGO */}
@@ -877,6 +897,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     { key: 'shops', label: '🏪 Comercios & Negocios (Ferreterías, Talleres, Corralones)', desc: 'Guía comercial de la zona con mapa, WhatsApp y descuentos' },
                     { key: 'jobs', label: '💼 Bolsa de Trabajo (RRHH & Currículums Vitae)', desc: 'Módulo de publicación y búsqueda de CVs clasificados por oficio con Asistente IA' },
                     { key: 'delivery', label: '🛵 ServiGo Delivery (Envíos & Pedidos)', desc: 'Recepción de pedidos en tiempo real para comercios y flujo de compra para clientes' },
+                    { key: 'alquiler', label: '🔄 ServiGo Alquiler', desc: 'Módulo de alquiler de herramientas y productos entre vecinos' },
+                    { key: 'cadetes', label: '🛵 Cadetes & Mandados', desc: 'Cadetes de la zona para mandados, retiros y traslados' },
                     { key: 'remises', label: '🚕 Remises & Viajes', desc: 'Red de remiseros con mapa interactivo en vivo y pedidos directos' },
                     { key: 'register', label: '👷 Soy Trabajador (Publicar Perfil)', desc: 'Formulario de registro para nuevos prestadores' },
                     { key: 'sponsor', label: '🏬 Ferretería Bruzzone (Tienda Oficial)', desc: 'Espacio patrocinado con catálogo de materiales' },
@@ -884,7 +906,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     { key: 'bookings', label: '📅 Mis Turnos (Solicitudes Enviadas)', desc: 'Historial de reservas e interactividad' },
                   ].map((item) => {
                     const k = item.key as keyof TabVisibilityConfig;
-                    const isVisible = localTabs[k];
+                    const isVisible = localTabs[k] !== false;
 
                     return (
                       <div
@@ -908,6 +930,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
 
                         <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isVisible}
+                          aria-label={`Mostrar ${item.label}`}
                           onClick={() => handleToggleTab(k)}
                           className={`w-12 h-7 rounded-full p-1 transition-colors flex items-center ${
                             isVisible ? 'bg-amber-500 justify-end' : 'bg-slate-800 justify-start'

@@ -10,6 +10,7 @@ interface WelcomeHubScreenProps {
   onOpenPdfGuide?: () => void;
   onOpenAdminPanel?: () => void;
   isAdminAuthenticated?: boolean;
+  hiddenModules?: HubModule[];
 }
 
 // Palabras que llevan la búsqueda al módulo correcto
@@ -67,6 +68,7 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
   onOpenPdfGuide,
   onOpenAdminPanel,
   isAdminAuthenticated = false,
+  hiddenModules = [],
 }) => {
   const [query, setQuery] = useState('');
 
@@ -74,7 +76,8 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-    const target = routeQuery(q);
+    let target = routeQuery(q);
+    if (hiddenModules.includes(target)) target = 'servicios';
     if (target === 'servicios' && onSearch) onSearch(q);
     else onSelectModule(target);
   };
@@ -144,7 +147,7 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
         </form>
 
         <nav aria-label="Módulos" className="flex flex-col gap-3">
-          {MODULES.map((m) => {
+          {MODULES.filter((m) => !hiddenModules.includes(m.id)).map((m) => {
             const Icon = m.icon;
             return (
               <button
@@ -173,6 +176,7 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
           })}
         </nav>
 
+        {!hiddenModules.includes('cadetes') && (
         <button
           type="button"
           onClick={() => onSelectModule('cadetes')}
@@ -184,6 +188,7 @@ export const WelcomeHubScreen: React.FC<WelcomeHubScreenProps> = ({
           </span>
           <ChevronRight className="w-5 h-5 text-sg-muted" aria-hidden="true" />
         </button>
+        )}
 
         <div className="flex items-center gap-3 px-4 py-3.5 rounded-[18px] border border-white/15 bg-white/5">
           <Gift className="w-6 h-6 text-[#ffb547] shrink-0" aria-hidden="true" />

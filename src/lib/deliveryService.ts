@@ -27,7 +27,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db, auth, sanitizeForFirestore } from './firebase';
-import { UserProfile, Merchant, MerchantProduct, Order, OrderStatus, DispatchMethod, OrderMessage } from '../types';
+import { isPubliclyApproved, UserProfile, Merchant, MerchantProduct, Order, OrderStatus, DispatchMethod, OrderMessage } from '../types';
 import { INITIAL_MERCHANTS } from '../data/mockMerchants';
 
 // Nombres de colecciones oficiales de Firestore
@@ -177,7 +177,7 @@ export function subscribeMerchants(onData: (merchants: Merchant[]) => void): () 
       if (!snapshot.empty) {
         const list: Merchant[] = snapshot.docs
           .map((d) => d.data() as Merchant)
-          .filter((m) => !DEMO_MERCHANT_IDS.has(m.id) && Boolean(m.ownerUid));
+          .filter((m) => !DEMO_MERCHANT_IDS.has(m.id) && Boolean(m.ownerUid) && isPubliclyApproved(m));
         onData(list);
       } else {
         onData([]);

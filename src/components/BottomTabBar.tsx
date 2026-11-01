@@ -6,6 +6,7 @@ export type BottomTab = 'inicio' | 'servicios' | 'delivery' | 'alquiler';
 interface BottomTabBarProps {
   active: BottomTab;
   onSelect: (tab: BottomTab) => void;
+  hidden?: BottomTab[];
 }
 
 const TABS: { id: BottomTab; label: string; icon: React.ElementType; color: string }[] = [
@@ -19,14 +20,16 @@ const TABS: { id: BottomTab; label: string; icon: React.ElementType; color: stri
  * Barra fija inferior para celular: cambia de módulo sin volver al inicio.
  * En pantallas grandes se oculta (la barra superior ya cubre la navegación).
  */
-export const BottomTabBar: React.FC<BottomTabBarProps> = ({ active, onSelect }) => (
+export const BottomTabBar: React.FC<BottomTabBarProps> = ({ active, onSelect, hidden = [] }) => {
+  const tabs = TABS.filter((t) => !hidden.includes(t.id));
+  return (
   <nav
     aria-label="Secciones de ServiGo"
     className="sm:hidden fixed inset-x-0 bottom-0 z-40 bg-sg-navy-3/95 backdrop-blur border-t border-white/10 font-sans"
     style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
   >
-    <div className="grid grid-cols-4 px-2 pt-1.5">
-      {TABS.map((t) => {
+    <div className="grid px-2 pt-1.5" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      {tabs.map((t) => {
         const Icon = t.icon;
         const isActive = t.id === active;
         return (
@@ -47,3 +50,4 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ active, onSelect }) 
     </div>
   </nav>
 );
+};

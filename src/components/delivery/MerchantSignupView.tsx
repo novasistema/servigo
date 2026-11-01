@@ -117,11 +117,12 @@ export const MerchantSignupView: React.FC<MerchantSignupViewProps> = ({ onRegist
       hasOwnDelivery,
       products: [],
       ownerUid: currentUser.uid,
+      approvalStatus: 'pending',
       createdAt: new Date().toISOString(),
     };
     try {
       await registerMerchant(merchant);
-      showToast?.(`Listo: "${merchant.name}" quedó registrado. Cargá tu menú y abrí el local.`);
+      showToast?.(`Listo: "${merchant.name}" quedó registrado. Mientras lo revisamos, cargá tu menú.`);
       onRegistered(merchant);
     } catch (err: any) {
       console.error(err);

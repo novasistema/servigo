@@ -19,39 +19,65 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    // Aprobación del creador: lo nuevo entra "pendiente" y solo el creador cambia ese estado
+    function createsPending() {
+      return request.resource.data.approvalStatus == 'pending';
+    }
+    function keepsApproval() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approvalStatus', 'approvalNote', 'approvalDecidedAt']);
+    }
+
     // 1. PUBLIC CATALOGS: Public read, owner-only write, admin full access
     
     // Workers collection (Directorio de Profesionales de Oficios)
     match /workers/{workerId} {
       allow read: if true;
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && (
+          request.resource.data.ownerUid == request.auth.uid ||
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.createdBy == request.auth.uid
+        )
       );
-      allow update, delete: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
       );
     }
 
     // Shops collection (Comercios y Negocios Adheridos)
     match /shops/{shopId} {
       allow read: if true;
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && (
+          request.resource.data.ownerUid == request.auth.uid ||
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.createdBy == request.auth.uid
+        )
       );
-      allow update, delete: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
       );
     }
 
@@ -62,12 +88,14 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         isAdmin() || (
           request.resource.data.ownerUid == request.auth.uid &&
+          createsPending() &&
           !request.resource.data.keys().hasAny(['accountPassword', 'accountUsername', 'accountEmail'])
         )
       );
       allow update: if isSignedIn() && (
         isAdmin() || (
           resource.data.ownerUid == request.auth.uid &&
+          keepsApproval() &&
           request.resource.data.ownerUid == request.auth.uid &&
           !request.resource.data.keys().hasAny(['accountPassword', 'accountUsername', 'accountEmail'])
         )
@@ -78,17 +106,26 @@ service cloud.firestore {
     // Rental Items collection (ServiGo Alquiler de Productos - Catálogo Público)
     match /rental_items/{itemId} {
       allow read: if true;
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        request.resource.data.ownerId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && (
+          request.resource.data.ownerUid == request.auth.uid ||
+          request.resource.data.ownerId == request.auth.uid ||
+          request.resource.data.createdBy == request.auth.uid
+        )
       );
-      allow update, delete: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid ||
-        resource.data.ownerId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.ownerId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.ownerId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
       );
     }
 
@@ -118,34 +155,52 @@ service cloud.firestore {
     // Job Profiles & CVs collection (Bolsa de Trabajo)
     match /job_profiles/{profileId} {
       allow read: if true;
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && (
+          request.resource.data.ownerUid == request.auth.uid ||
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.createdBy == request.auth.uid
+        )
       );
-      allow update, delete: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
       );
     }
 
     // Remises & Conductores collection
     match /remises/{remisId} {
       allow read: if true;
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && (
+          request.resource.data.ownerUid == request.auth.uid ||
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.createdBy == request.auth.uid
+        )
       );
-      allow update, delete: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        isAdmin()
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.createdBy == request.auth.uid
+        )
       );
     }
 
@@ -337,6 +392,25 @@ service cloud.firestore {
         (!('source' in request.resource.data) || request.resource.data.source != 'rental')
       );
       allow update, delete: if isAdmin();
+    }
+
+    // Cadetes (mandados y traslados)
+    match /cadetes/{cadeteId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isSignedIn() && createsPending() && request.resource.data.ownerUid == request.auth.uid
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() && keepsApproval() && resource.data.ownerUid == request.auth.uid
+      );
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // Pedidos a cadetes
+    match /cadete_requests/{requestId} {
+      allow read, create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // Deny all other unmatched paths

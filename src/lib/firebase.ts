@@ -78,6 +78,7 @@ export const DEFAULT_TAB_CONFIG: TabVisibilityConfig = {
   sponsor: true,
   ai: true,
   bookings: true,
+  alquiler: true,
 };
 
 export const INITIAL_BANNERS: PromotedBanner[] = [

@@ -29,6 +29,10 @@ export interface Review {
 }
 
 export interface Worker {
+  approvalStatus?: ApprovalStatus;
+  ownerUid?: string;
+  createdBy?: string;
+  approvalNote?: string;
   id: string;
   name: string;
   avatar: string;
@@ -86,6 +90,10 @@ export interface HardwareProduct {
 }
 
 export interface Shop {
+  approvalStatus?: ApprovalStatus;
+  ownerUid?: string;
+  createdBy?: string;
+  approvalNote?: string;
   id: string;
   name: string;
   category: 'ferreteria' | 'taller_mecanico' | 'electricidad' | 'sanitarios_plomeria' | 'corralon_materiales' | 'pintureria' | 'repuestos' | 'servicios_tecnicos' | string;
@@ -110,6 +118,13 @@ export interface Shop {
   createdAt?: string;
 }
 
+/** Estado de revisión del creador para todo lo que se publica */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+/** Lo aprobado o lo anterior a las aprobaciones se muestra al público */
+export const isPubliclyApproved = (x: { approvalStatus?: ApprovalStatus }) =>
+  x.approvalStatus !== 'pending' && x.approvalStatus !== 'rejected';
+
 export interface TabVisibilityConfig {
   search: boolean;     // "Buscar Oficio"
   shops: boolean;      // "Comercios & Negocios"
@@ -121,9 +136,14 @@ export interface TabVisibilityConfig {
   sponsor: boolean;    // "Ferretería Bruzzone"
   ai: boolean;         // "Diagnóstico IA"
   bookings: boolean;   // "Mis Turnos"
+  alquiler?: boolean;  // "ServiGo Alquiler"
 }
 
 export interface RemisDriver {
+  approvalStatus?: ApprovalStatus;
+  ownerUid?: string;
+  createdBy?: string;
+  approvalNote?: string;
   id: string;
   name: string;
   phone: string;
@@ -295,6 +315,8 @@ export interface MerchantProduct {
 }
 
 export interface Merchant {
+  approvalStatus?: ApprovalStatus;
+  approvalNote?: string;
   id: string;
   name: string;
   category: string;
@@ -388,6 +410,10 @@ export interface EducationItem {
 }
 
 export interface JobProfile {
+  approvalStatus?: ApprovalStatus;
+  ownerUid?: string;
+  createdBy?: string;
+  approvalNote?: string;
   id: string;
   fullName: string;
   trade: TradeCategory | string;
@@ -421,6 +447,10 @@ export interface JobProfile {
 export type CadeteVehicleType = 'moto' | 'bicicleta' | 'auto';
 
 export interface Cadete {
+  approvalStatus?: ApprovalStatus;
+  ownerUid?: string;
+  createdBy?: string;
+  approvalNote?: string;
   id: string;
   name: string;
   phone: string;
@@ -521,6 +551,8 @@ export interface RentalOwner {
 }
 
 export interface RentalItem {
+  approvalStatus?: ApprovalStatus;
+  approvalNote?: string;
   id: string;
   ownerId?: string;
   ownerUid?: string;
