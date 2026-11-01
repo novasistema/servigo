@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { AdminRentalItemsPanel } from './admin/AdminRentalItemsPanel';
 import { AdminConvenioPanel } from './admin/AdminConvenioPanel';
 import { AdminApprovalsPanel } from './admin/AdminApprovalsPanel';
+import { AdminListingsPanel } from './admin/AdminListingsPanel';
 import { compressImageFile } from '../utils/imageCompression';
 import {
   X,
@@ -132,7 +133,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'approvals' | 'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'rental_items' | 'convenio' | 'reset'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'listings' | 'tabs' | 'banners' | 'coupons' | 'subscriptions' | 'workers' | 'shops' | 'remises' | 'rentals_wallet' | 'rental_items' | 'convenio' | 'reset'>('approvals');
   const [pendingCount, setPendingCount] = useState(0);
   const { currentUser, isAdmin, loginWithGoogle, logout } = useAuth();
   const creatorVerified = Boolean(isAdmin && currentUser?.emailVerified);
@@ -624,6 +625,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
 
               <button
+                type="button"
+                onClick={() => setActiveTab('listings')}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'listings' ? 'bg-sky-400 text-slate-950 shadow-md' : 'text-sky-300 hover:text-sky-200'
+                }`}
+              >
+                <span>📋 Publicaciones</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('tabs')}
                 className={`py-2 px-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
                   activeTab === 'tabs'
@@ -731,7 +742,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   activeTab === 'rental_items' ? 'bg-orange-500 text-slate-950 shadow-md' : 'text-orange-300 hover:text-orange-200'
                 }`}
               >
-                <span>📦 Publicaciones ({rentalItems.length})</span>
+                <span>📦 Alquileres ({rentalItems.length})</span>
               </button>
 
               <button
@@ -760,6 +771,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div hidden={activeTab !== 'approvals'}>
               <AdminApprovalsPanel showToast={showToast} onCountChange={setPendingCount} />
             </div>
+
+            {activeTab === 'listings' && <AdminListingsPanel showToast={showToast} />}
 
             {/* TAB 1: VISIBILIDAD DE SOLAPAS Y LOGO */}
             {activeTab === 'tabs' && (

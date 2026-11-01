@@ -3,9 +3,9 @@ import { collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/f
 import { CheckCircle2, XCircle, Phone, MapPin, ExternalLink, Inbox } from 'lucide-react';
 import { db } from '../../lib/firebase';
 
-type Kind = 'workers' | 'shops' | 'merchants' | 'remises' | 'cadetes' | 'job_profiles' | 'rental_items';
+export type Kind = 'workers' | 'shops' | 'merchants' | 'remises' | 'cadetes' | 'job_profiles' | 'rental_items';
 
-const KINDS: { id: Kind; label: string }[] = [
+export const KINDS: { id: Kind; label: string }[] = [
   { id: 'workers', label: 'Trabajador' },
   { id: 'merchants', label: 'Local de comida' },
   { id: 'rental_items', label: 'Producto en alquiler' },
@@ -15,7 +15,7 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: 'job_profiles', label: 'CV / Bolsa de trabajo' },
 ];
 
-interface PendingItem {
+export interface PendingItem {
   kind: Kind;
   id: string;
   data: any;
@@ -23,7 +23,7 @@ interface PendingItem {
 
 const pick = (d: any, ...keys: string[]) => keys.map((k) => d?.[k]).find((v) => typeof v === 'string' && v.trim()) || '';
 
-function summarize(item: PendingItem) {
+export function summarize(item: PendingItem) {
   const d = item.data;
   const title = pick(d, 'name', 'title', 'fullName');
   const subtitle = pick(d, 'tradeTitle', 'category', 'categoryLabel', 'desiredTitle', 'vehicleDescription', 'businessType');
