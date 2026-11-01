@@ -34,6 +34,13 @@ interface WorkerRegisterFormProps {
   onOpenPdfGuide?: () => void;
 }
 
+/** Avatar con las iniciales (en vez de la foto de otra persona) cuando no se sube foto */
+function initialsAvatar(name: string): string {
+  const ini = name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('') || '?';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='160' height='160' fill='#1f6fe0'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,sans-serif' font-size='64' font-weight='700' fill='#ffffff'>${ini}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   onRegisterSuccess,
   customTrades = [],
@@ -46,6 +53,8 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [photoSourceType, setPhotoSourceType] = useState<'camera' | 'upload' | 'preset' | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [trade, setTrade] = useState<TradeCategory>('gasista');
   const [isCreatingCustomTrade, setIsCreatingCustomTrade] = useState(false);
   const [newTradeLabel, setNewTradeLabel] = useState('');
@@ -201,12 +210,16 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setPhotoError(null);
       compressPhoto(file, 'perfil')
         .then((dataUrl) => {
           setAvatar(dataUrl);
           setPhotoSourceType('upload');
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          setPhotoError('No pudimos leer esa foto. Probá con otra o sacate una con la cámara.');
+        });
       e.target.value = '';
     }
   };
@@ -257,9 +270,7 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
     const generatedWorker: Worker = {
       id: `w-custom-${Date.now()}`,
       name,
-      avatar:
-        avatar ||
-        'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300',
+      avatar: avatar || initialsAvatar(name),
       trade,
       tradeTitle:
         tradeTitle ||
@@ -299,7 +310,10 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
       ],
     };
 
+    if (isSubmitting) return; // evita registros duplicados por doble toque
+    setIsSubmitting(true);
     onRegisterSuccess(generatedWorker);
+    setTimeout(() => setIsSubmitting(false), 4000);
   };
 
   return (
@@ -596,7 +610,6 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="user"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -663,6 +676,12 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                       <CameraOff className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>{cameraError}</span>
                     </div>
+                  )}
+
+                  {photoError && (
+                    <p role="alert" className="m-0 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold">
+                      {photoError}
+                    </p>
                   )}
 
                   {avatar ? (
@@ -741,41 +760,6 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
                     </div>
                   )}
 
-                  {/* PRESET AVATARS & URL FALLBACK */}
-                  <div className="pt-2 border-t border-slate-200/80 space-y-2">
-                    <span className="block text-[11px] font-bold text-slate-500">
-                      O elige una foto prediseñada:
-                    </span>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                      {avatarOptions.map((optUrl, idx) => (
-                        <img
-                          key={idx}
-                          src={optUrl}
-                          alt={`Opción avatar ${idx + 1}`}
-                          onClick={() => {
-                            setAvatar(optUrl);
-                            setPhotoSourceType('preset');
-                          }}
-                          className={`w-11 h-11 rounded-2xl object-cover cursor-pointer border-2 transition-all ${
-                            avatar === optUrl
-                              ? 'border-orange-600 scale-105 shadow-md'
-                              : 'border-slate-200 opacity-60 hover:opacity-100'
-                          }`}
-                        />
-                      ))}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={avatar.startsWith('data:') ? '' : avatar}
-                      onChange={(e) => {
-                        setAvatar(e.target.value);
-                        setPhotoSourceType('preset');
-                      }}
-                      placeholder="O pega el enlace URL directo de tu foto de perfil..."
-                      className="w-full py-2 px-3 bg-white border border-slate-200 rounded-2xl text-[11px] text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
                 </div>
               )}
             </div>
@@ -988,7 +972,8 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex-1 py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="disabled:opacity-60 flex-1 py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Publicar Perfil de Trabajador</span>
