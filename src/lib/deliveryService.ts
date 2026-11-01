@@ -26,7 +26,7 @@ import {
   setDoc,
   getDocs,
 } from 'firebase/firestore';
-import { db, sanitizeForFirestore } from './firebase';
+import { db, auth, sanitizeForFirestore } from './firebase';
 import { UserProfile, Merchant, MerchantProduct, Order, OrderStatus, DispatchMethod, OrderMessage } from '../types';
 import { INITIAL_MERCHANTS } from '../data/mockMerchants';
 
@@ -126,14 +126,13 @@ export function subscribeUserProfile(userId: string, onData: (user: UserProfile)
         const u = docSnap.data() as UserProfile;
         onData(u);
       } else {
-        // Inicializar usuario por defecto si no existe
-        saveUserProfile(DEFAULT_LOCAL_USER);
-        onData(DEFAULT_LOCAL_USER);
+        // Todavía no cargó sus datos de envío
+        onData({ ...DEFAULT_LOCAL_USER, id: userId, name: '', phone: '', email: '', deliveryAddress: '' });
       }
     },
     (err) => {
       handleDeliveryFirestoreError(err, 'onSnapshot', `${USERS_COLLECTION}/${userId}`);
-      onData(DEFAULT_LOCAL_USER);
+      onData({ ...DEFAULT_LOCAL_USER, id: userId, name: '', phone: '', email: '', deliveryAddress: '' });
     }
   );
 }
@@ -178,7 +177,7 @@ export function subscribeMerchants(onData: (merchants: Merchant[]) => void): () 
       if (!snapshot.empty) {
         const list: Merchant[] = snapshot.docs
           .map((d) => d.data() as Merchant)
-          .filter((m) => !DEMO_MERCHANT_IDS.has(m.id));
+          .filter((m) => !DEMO_MERCHANT_IDS.has(m.id) && Boolean(m.ownerUid));
         onData(list);
       } else {
         onData([]);
@@ -228,9 +227,13 @@ export async function updateMerchantDeliveryFees(
  * Registra o actualiza una casa de comidas en Firestore con sus credenciales privadas
  */
 export async function registerMerchant(merchant: Merchant): Promise<void> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Ingresá con tu cuenta para registrar tu local.');
   try {
+    const { accountPassword, accountUsername, accountEmail, ...rest } = merchant;
     const cleanMerchant = sanitizeForFirestore({
-      ...merchant,
+      ...rest,
+      ownerUid: uid,
       createdAt: merchant.createdAt || new Date().toISOString(),
     });
     const ref = doc(db, MERCHANTS_COLLECTION, merchant.id);
@@ -243,26 +246,18 @@ export async function registerMerchant(merchant: Merchant): Promise<void> {
 }
 
 /**
- * Valida credenciales de acceso para un comercio por email o nombre de usuario y contraseña
+ * Local (o locales) cuyo dueño es la cuenta indicada
  */
-export function authenticateMerchantLocally(
-  identifier: string,
-  pass: string,
-  merchantsList: Merchant[]
-): Merchant | null {
-  const cleanId = identifier.trim().toLowerCase();
-  const cleanPass = pass.trim();
-
-  const found = merchantsList.find((m) => {
-    const matchesEmail = Boolean(m.accountEmail && m.accountEmail.toLowerCase() === cleanId);
-    const matchesUser = Boolean(m.accountUsername && m.accountUsername.toLowerCase() === cleanId);
-    const matchesName = Boolean(m.name && m.name.toLowerCase() === cleanId);
-    const matchesPass = m.accountPassword === cleanPass;
-
-    return (matchesEmail || matchesUser || matchesName) && matchesPass;
-  });
-
-  return found || null;
+export function subscribeMyMerchants(uid: string, onData: (merchants: Merchant[]) => void): () => void {
+  const q = query(collection(db, MERCHANTS_COLLECTION), where('ownerUid', '==', uid));
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => d.data() as Merchant)),
+    (err) => {
+      handleDeliveryFirestoreError(err, 'onSnapshot: subscribeMyMerchants', MERCHANTS_COLLECTION);
+      onData([]);
+    }
+  );
 }
 
 const MERCHANT_SESSION_KEY = 'servigo_logged_merchant_id_v1';
@@ -386,12 +381,19 @@ export async function toggleProductAvailability(
  * Utiliza serverTimestamp() para garantizar sincronía temporal en el servidor.
  */
 export async function createOrder(
-  orderInput: Omit<Order, 'id' | 'createdAt'>
+  orderInput: Omit<Order, 'id' | 'createdAt'>,
+  merchantOwnerUid?: string
 ): Promise<string> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Ingresá con tu cuenta para hacer el pedido.');
+  if (!merchantOwnerUid) throw new Error('Este local todavía no puede recibir pedidos.');
   try {
     const ordersCol = collection(db, ORDERS_COLLECTION);
     const cleanPayload = sanitizeForFirestore({
       ...orderInput,
+      clientId: uid,
+      clientUid: uid,
+      merchantOwnerUid,
       status: 'PENDING' as OrderStatus,
       createdAt: new Date().toISOString(),
       serverTimestamp: serverTimestamp(),
@@ -416,7 +418,7 @@ export function subscribeClientOrders(
 ): () => void {
   const ordersRef = collection(db, ORDERS_COLLECTION);
   // Consulta filtrando por clientId
-  const q = query(ordersRef, where('clientId', '==', clientId));
+  const q = query(ordersRef, where('clientUid', '==', clientId));
 
   return onSnapshot(
     q,
@@ -451,16 +453,22 @@ export function subscribeMerchantOrders(
   merchantId: string,
   onData: (orders: Order[]) => void
 ): () => void {
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    onData([]);
+    return () => {};
+  }
   const ordersRef = collection(db, ORDERS_COLLECTION);
-  const q = query(ordersRef, where('merchantId', '==', merchantId));
+  // Solo los pedidos de locales de esta cuenta (así lo exigen las reglas)
+  const q = query(ordersRef, where('merchantOwnerUid', '==', uid));
 
   return onSnapshot(
     q,
     (snapshot) => {
-      const orders = snapshot.docs.map((d) => ({
+      const orders = (snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
-      })) as Order[];
+      })) as Order[]).filter((o) => o.merchantId === merchantId);
 
       // Ordenar: pedidos pendientes y en preparación primero, luego los más recientes
       orders.sort((a, b) => {

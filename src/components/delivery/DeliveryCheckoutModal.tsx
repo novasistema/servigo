@@ -133,7 +133,7 @@ export const DeliveryCheckoutModal: React.FC<DeliveryCheckoutModalProps> = ({
         paymentMethod,
         notes: notes.trim() || undefined,
         status: 'PENDING',
-      });
+      }, merchant.ownerUid);
 
       if (showToast) {
         showToast('🎉 ¡Pedido enviado al comercio con éxito! Esperando confirmación...');
@@ -143,7 +143,7 @@ export const DeliveryCheckoutModal: React.FC<DeliveryCheckoutModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error al crear pedido:', error);
-      setErrorMessage('Hubo un error al enviar el pedido. Por favor intenta de nuevo.');
+      setErrorMessage((error as any)?.message || 'Hubo un error al enviar el pedido. Por favor intenta de nuevo.');
       if (showToast) showToast('Error al procesar el pedido. Intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
@@ -183,7 +183,7 @@ export const DeliveryCheckoutModal: React.FC<DeliveryCheckoutModalProps> = ({
           <div className="space-y-3">
             <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
               <User className="w-4 h-4 text-orange-500" />
-              Tus Datos de Envío (Colección 'users')
+              Tus datos de envío
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

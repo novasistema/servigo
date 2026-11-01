@@ -23,14 +23,12 @@ import {
   subscribeMerchants,
   subscribeUserProfile,
   subscribeClientOrders,
-  getSavedMerchantSession,
-  setSavedMerchantSession,
-  clearSavedMerchantSession,
+  subscribeMyMerchants,
 } from '../../lib/deliveryService';
-import { INITIAL_MERCHANTS } from '../../data/mockMerchants';
 import { ClientDeliveryView } from './ClientDeliveryView';
 import { MerchantOrdersPanel } from './MerchantOrdersPanel';
-import { MerchantLoginRegisterView } from './MerchantLoginRegisterView';
+import { MerchantSignupView } from './MerchantSignupView';
+import { useAuth } from '../../context/AuthContext';
 import { DeliveryUserProfileModal } from './DeliveryUserProfileModal';
 import { ShopDashboardModal } from './ShopDashboardModal';
 import { ServiGoDeliveryLogo } from '../logos/ServiGoDeliveryLogo';
@@ -53,52 +51,52 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
   const [activeMode, setActiveMode] = useState<'client' | 'merchant'>('client');
   const [merchants, setMerchants] = useState<Merchant[]>([]);
 
-  // Authenticated Merchant ID for private food merchant access
-  const [loggedMerchantId, setLoggedMerchantId] = useState<string | null>(() => {
-    return getSavedMerchantSession();
-  });
+  const { currentUser, requireAuth } = useAuth();
+  const uid = currentUser?.uid || null;
 
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    id: 'usr_cliente_local',
-    name: '',
+  // Local(es) de comida de la cuenta que ingresó
+  const [myMerchants, setMyMerchants] = useState<Merchant[]>([]);
+
+  const emptyProfile = (id: string): UserProfile => ({
+    id,
+    name: currentUser?.displayName || '',
     phone: '',
-    email: '',
+    email: currentUser?.email || '',
     role: 'client',
     deliveryAddress: '',
-    coordinates: {
-      lat: -33.3524,
-      lng: -63.7214,
-    },
+    coordinates: { lat: -33.3524, lng: -63.7214 },
   });
+  const [userProfile, setUserProfile] = useState<UserProfile>(emptyProfile('anon'));
   const [clientOrders, setClientOrders] = useState<Order[]>([]);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isShopDashboardModalOpen, setIsShopDashboardModalOpen] = useState<boolean>(false);
-  const [showVercelNotes, setShowVercelNotes] = useState<boolean>(false);
 
-  // Subscribe to merchants in Firestore
+  // Comercios públicos (cualquiera puede verlos)
+  useEffect(() => subscribeMerchants((list) => setMerchants(list || [])), []);
+
+  // Perfil, pedidos y locales propios: solo con la cuenta ingresada
   useEffect(() => {
-    const unsubMerchants = subscribeMerchants((realtimeMerchants) => {
-      setMerchants(realtimeMerchants || []);
-    });
-
-    const unsubUser = subscribeUserProfile(userProfile.id, (realtimeUser) => {
-      setUserProfile(realtimeUser);
-    });
-
-    const unsubClientOrders = subscribeClientOrders(userProfile.id, (orders) => {
-      setClientOrders(orders);
-    });
-
+    if (!uid) {
+      setUserProfile(emptyProfile('anon'));
+      setClientOrders([]);
+      setMyMerchants([]);
+      return;
+    }
+    const unsubUser = subscribeUserProfile(uid, (u) =>
+      setUserProfile({ ...emptyProfile(uid), ...u, id: uid })
+    );
+    const unsubOrders = subscribeClientOrders(uid, setClientOrders);
+    const unsubMine = subscribeMyMerchants(uid, setMyMerchants);
     return () => {
-      unsubMerchants();
       unsubUser();
-      unsubClientOrders();
+      unsubOrders();
+      unsubMine();
     };
-  }, [userProfile.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
 
-  const loggedMerchant = loggedMerchantId
-    ? merchants.find((m) => m.id === loggedMerchantId) || null
-    : null;
+  const loggedMerchant = myMerchants[0] || null;
+  const loggedMerchantId = loggedMerchant?.id || null;
 
   return (
     <div className="font-sans">
@@ -123,7 +121,7 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
             {activeMode === 'client' && (
               <button
                 type="button"
-                onClick={() => setIsProfileModalOpen(true)}
+                onClick={() => requireAuth(() => setIsProfileModalOpen(true), 'Ingresá para guardar tu dirección de envío.')}
                 className="flex-1 sm:flex-none sm:min-w-72 flex items-center gap-3 h-[52px] px-4 rounded-2xl bg-sg-navy-2 hover:bg-[#1a3060] text-left cursor-pointer"
               >
                 <MapPin className="w-5 h-5 text-sg-orange shrink-0" aria-hidden="true" />
@@ -174,26 +172,18 @@ export const DeliveryModule: React.FC<DeliveryModuleProps> = ({
           userProfile={userProfile}
           activeOrders={clientOrders}
           showToast={showToast}
-          onOpenProfileModal={() => setIsProfileModalOpen(true)}
+          onOpenProfileModal={() => requireAuth(() => setIsProfileModalOpen(true), 'Ingresá para guardar tu dirección de envío.')}
         />
       ) : !loggedMerchant ? (
-        <MerchantLoginRegisterView
-          allMerchants={merchants}
-          onLoginSuccess={(merchant) => {
-            setLoggedMerchantId(merchant.id);
-            setSavedMerchantSession(merchant.id);
-          }}
+        <MerchantSignupView
+          onRegistered={() => showToast?.('Tu local ya está registrado.')}
           onCancelToClientMode={() => setActiveMode('client')}
           showToast={showToast}
         />
       ) : (
         <MerchantOrdersPanel
           merchant={loggedMerchant}
-          onLogout={() => {
-            setLoggedMerchantId(null);
-            clearSavedMerchantSession();
-            if (showToast) showToast('Sesión de comercio cerrada.');
-          }}
+          onLogout={() => setActiveMode('client')}
           showToast={showToast}
         />
       )}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   Store,
   Search,
@@ -70,6 +71,7 @@ export const ClientDeliveryView: React.FC<ClientDeliveryViewProps> = ({
   // Shopping Cart State
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const { requireAuth } = useAuth();
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   // Quick food type filters for "Elegir por Comida en Particular"
@@ -871,10 +873,12 @@ export const ClientDeliveryView: React.FC<ClientDeliveryViewProps> = ({
             </div>
 
             <button
-              onClick={() => {
-                setSelectedMerchant(activeCartMerchant);
-                setIsCheckoutOpen(true);
-              }}
+              onClick={() =>
+                requireAuth(() => {
+                  setSelectedMerchant(activeCartMerchant);
+                  setIsCheckoutOpen(true);
+                }, 'Ingresá con tu cuenta para hacer el pedido y seguirlo en vivo.')
+              }
               className="py-2.5 px-4 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition-all shadow-md shadow-orange-600/30 flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <span>Ir a Pagar</span>

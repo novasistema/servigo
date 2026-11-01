@@ -315,7 +315,8 @@ export interface Merchant {
   hasOwnDelivery: boolean;
   products: MerchantProduct[];
   ownerUserId?: string;
-  // Account authentication credentials for private portal
+  ownerUid?: string; // Cuenta ServiGo (Google / email) dueña del local
+  // LEGADO: credenciales propias del portal anterior. Ya no se usan ni se guardan.
   accountEmail?: string;
   accountUsername?: string;
   accountPassword?: string;
@@ -346,6 +347,8 @@ export interface Order {
   merchantAddress?: string;
   merchantPhone?: string;
   clientId: string;
+  clientUid?: string; // uid de Firebase Auth del cliente
+  merchantOwnerUid?: string; // uid de Firebase Auth del dueño del local
   clientName: string;
   clientPhone: string;
   deliveryAddress: string;
