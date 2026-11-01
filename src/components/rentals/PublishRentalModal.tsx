@@ -97,7 +97,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
       }
 
       // Se achica la foto (las del celular pesan varios MB) para que entre en la base y cargue rápido
-      compressImageFile(file, 1024, 0.72)
+      compressImageFile(file, 900, 0.62)
         .then((result) => {
           setUploadedImages((prev) => {
             if (prev.length >= 3) return prev;
@@ -226,6 +226,14 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      // Firestore admite hasta 1 MB por publicación (las fotos van adentro)
+      const approxBytes = JSON.stringify(newItem).length;
+      if (approxBytes > 900_000) {
+        setFormError('Las fotos son muy pesadas para guardarlas juntas. Quitá una foto y probá de nuevo.');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Si la red tarda demasiado, avisamos en vez de quedar "Guardando..." para siempre
       await Promise.race([
         onSaveRentalItem(newItem, newOwner),
