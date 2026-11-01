@@ -972,90 +972,75 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
   });
 
   // 1. Confirmar devolución del bien: liquida el alquiler al dueño y reintegra la caución al cliente
-  app.post('/api/rentals/confirm-return', authenticateFirebaseUser, async (req, res) => {
-    try {
-      const { bookingId } = req.body;
-      const user = (req as any).user;
+  // Cierra un alquiler devuelto conforme: reintegra garantía (menos mora), acredita al dueño y emite cupones.
+  // Es atómico: si dos pedidos llegan juntos, solo uno liquida.
+  async function settleReturn(bookingId: string) {
+    const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+    const now = new Date();
 
-      if (!bookingId) {
-        return res.status(400).json({ error: 'Falta el bookingId de la reserva.' });
+    const claimed = await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(bookingRef);
+      if (!snap.exists) throw Object.assign(new Error('Reserva no encontrada.'), { status: 404 });
+      const b = snap.data() as any;
+      if (b.paymentStatus === 'liquidado_a_dueno') return null;
+      if (b.paymentStatus !== 'pagado') {
+        throw Object.assign(new Error('La reserva todavía no figura como pagada. No se puede cerrar.'), { status: 400 });
       }
 
-      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
-      const bookingSnap = await bookingRef.get();
-
-      if (!bookingSnap.exists) {
-        return res.status(404).json({ error: 'Reserva no encontrada.' });
-      }
-
-      const booking = bookingSnap.data() as any;
-
-      // Solo el propietario o admin puede confirmar devolución
-      const isOwner = user.uid === booking.ownerUid || user.uid === booking.ownerId;
-      const isAdminUser = isUserAdmin(user);
-
-      if (!isOwner && !isAdminUser) {
-        return res.status(403).json({ error: 'No tienes permisos para confirmar la devolución de este bien.' });
-      }
-
-      // Si ya estaba liquidado, evitar doble acreditación
-      if (booking.paymentStatus === 'liquidado_a_dueno') {
-        return res.json({ success: true, message: 'La reserva ya fue liquidada previamente.', booking });
-      }
-      if (booking.paymentStatus !== 'pagado') {
-        return res.status(400).json({ error: 'La reserva todavía no figura como pagada. No se puede cerrar.' });
-      }
-
-      const ownerId = booking.ownerUid || booking.ownerId || user.uid;
-      const ownerNetAmount = Number(booking.ownerNetAmount) || 0;
-
-      // Mora por atraso: 150% del precio diario por día, descontada de la garantía
-      const depositPaid = booking.depositStatus === 'en_custodia' ? (Number(booking.depositAmount) || 0) : 0;
+      // Mora: 150% del precio diario por día de atraso, hasta el momento de la devolución
+      const returnedAt = b.devolucion?.clientSignedAt || b.devolucion?.submittedAt || now.toISOString();
+      const depositPaid = b.depositStatus === 'en_custodia' ? (Number(b.depositAmount) || 0) : 0;
       let lateFee = 0;
-      if (booking.endDate) {
-        const daysLate = Math.floor((Date.now() - new Date(`${booking.endDate}T23:59:59`).getTime()) / 86400000) + 1;
+      if (b.endDate) {
+        const daysLate = Math.floor((new Date(returnedAt).getTime() - new Date(`${b.endDate}T23:59:59`).getTime()) / 86400000) + 1;
         if (daysLate > 0) {
-          const daily = Number(booking.dailyPrice) || (Number(booking.rentalSubtotal) || 0) / Math.max(1, Number(booking.totalDays) || 1);
+          const daily = Number(b.dailyPrice) || (Number(b.rentalSubtotal) || 0) / Math.max(1, Number(b.totalDays) || 1);
           lateFee = Math.round(daily * 1.5 * daysLate);
         }
       }
       const lateFeeRetained = Math.min(lateFee, depositPaid);
       const depositRefund = depositPaid - lateFeeRetained;
 
-      // Si la garantía fue pagada por MP, reintegrar al cliente (descontando la mora)
-      if (booking.mpDepositPaymentId && isMpConfigured && depositRefund > 0) {
-        try {
-          await fetch(`https://api.mercadopago.com/v1/payments/${booking.mpDepositPaymentId}/refunds`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
-              'Content-Type': 'application/json',
-              'X-Idempotency-Key': `refund-${bookingId}`,
-            },
-            body: JSON.stringify(lateFeeRetained > 0 ? { amount: depositRefund } : {}),
-          });
-        } catch (refundErr) {
-          console.warn('Error en reembolso MP en confirm-return:', refundErr);
-        }
-      }
-
-      // Actualizar booking en Firestore con Admin SDK
-      await bookingRef.update({
+      tx.update(bookingRef, {
         status: 'devuelto',
         paymentStatus: 'liquidado_a_dueno',
         depositStatus: lateFeeRetained > 0 && depositRefund === 0 ? 'retenido_por_dano' : 'devuelto_a_cliente',
         lateFeeRetained,
         depositRefunded: depositRefund,
-        updatedAt: new Date().toISOString(),
+        closedAt: now.toISOString(),
+        updatedAt: now.toISOString(),
       });
+      return { b, lateFeeRetained, depositRefund };
+    });
 
-      // Actualizar saldo en la billetera del propietario
+    if (!claimed) return { already: true, vouchers: [] as any[] };
+    const { b, lateFeeRetained, depositRefund } = claimed;
+
+    // Reintegro de la garantía (pagada a la cuenta de la plataforma)
+    if (b.mpDepositPaymentId && isMpConfigured && depositRefund > 0) {
+      try {
+        await fetch(`https://api.mercadopago.com/v1/payments/${b.mpDepositPaymentId}/refunds`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': `refund-${bookingId}`,
+          },
+          body: JSON.stringify(lateFeeRetained > 0 ? { amount: depositRefund } : {}),
+        });
+      } catch (refundErr) {
+        console.warn('Error en reembolso MP:', refundErr);
+      }
+    }
+
+    const ownerId = b.ownerUid || b.ownerId;
+    const ownerNetAmount = Number(b.ownerNetAmount) || 0;
+    if (ownerId) {
       const ownerRef = adminDb.collection('rental_owners').doc(ownerId);
       const ownerSnap = await ownerRef.get();
-
       if (ownerSnap.exists) {
         await ownerRef.update(
-          booking.paidDirectToOwner
+          b.paidDirectToOwner
             ? {
                 walletBalance: FieldValue.increment(lateFeeRetained),
                 totalEarned: FieldValue.increment(ownerNetAmount + lateFeeRetained),
@@ -1067,18 +1052,176 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
               }
         );
       }
+    }
 
-      // Convenio Ferretería Bruzzone: cupón para inquilino y dueño al cerrar bien el alquiler
-      const vouchers = await issueBruzzoneVouchers(bookingId, booking);
+    const vouchers = await issueBruzzoneVouchers(bookingId, b);
+    return { already: false, vouchers, lateFeeRetained, depositRefund };
+  }
 
+  app.post('/api/rentals/confirm-return', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const { bookingId } = req.body;
+      const user = (req as any).user;
+      if (!bookingId) return res.status(400).json({ error: 'Falta el bookingId de la reserva.' });
+
+      const snap = await adminDb.collection('rental_bookings').doc(bookingId).get();
+      if (!snap.exists) return res.status(404).json({ error: 'Reserva no encontrada.' });
+      const booking = snap.data() as any;
+
+      const isOwner = user.uid === booking.ownerUid || user.uid === booking.ownerId;
+      if (!isOwner && !isUserAdmin(user)) {
+        return res.status(403).json({ error: 'No tienes permisos para confirmar la devolución de este bien.' });
+      }
+
+      const result = await settleReturn(bookingId);
       return res.json({
         success: true,
-        message: 'Devolución confirmada con éxito. Caución reintegrada y saldo liquidado al locador.',
-        vouchers,
+        message: result.already
+          ? 'La reserva ya fue liquidada previamente.'
+          : 'Devolución confirmada con éxito. Caución reintegrada y saldo liquidado al locador.',
+        vouchers: result.vouchers,
       });
     } catch (err: any) {
       console.error('Error en /api/rentals/confirm-return:', err);
-      return res.status(500).json({ error: err.message || 'Error del servidor al confirmar devolución.' });
+      return res.status(err.status || 500).json({ error: err.message || 'Error del servidor al confirmar devolución.' });
+    }
+  });
+
+  // =========================================================================
+  // ACTAS DE ENTREGA Y DEVOLUCIÓN (conformidad de ambas partes, con fotos)
+  //  entrega:    la carga el dueño  -> firma el inquilino  -> status en_curso
+  //  devolucion: la carga el inquilino (o el dueño) -> el dueño firma conforme
+  //              -> se liquida (garantía, saldo, cupones) o se reporta daño
+  // Fotos: subcolección rental_bookings/{id}/evidencias (JPEG/WebP comprimido)
+  // =========================================================================
+  const CHECK_KEYS = ['funciona', 'accesorios', 'estetica', 'limpio'] as const;
+  const MAX_PHOTO_CHARS = 450_000; // ~330 KB de imagen
+
+  function cleanChecklist(raw: any) {
+    const out: Record<string, boolean> = {};
+    for (const k of CHECK_KEYS) out[k] = Boolean(raw?.[k]);
+    return out;
+  }
+
+  app.post('/api/rentals/acta', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { bookingId, stage, checklist, notes = '', photos = [] } = req.body || {};
+      if (!bookingId || (stage !== 'entrega' && stage !== 'devolucion')) {
+        return res.status(400).json({ error: 'Datos del acta incompletos.' });
+      }
+      if (!Array.isArray(photos) || photos.length < 2 || photos.length > 4) {
+        return res.status(400).json({ error: 'Subí entre 2 y 4 fotos del producto.' });
+      }
+      for (const ph of photos) {
+        if (typeof ph !== 'string' || !/^data:image\/(jpeg|jpg|webp|png);base64,/.test(ph) || ph.length > MAX_PHOTO_CHARS) {
+          return res.status(400).json({ error: 'Alguna foto no es válida o es demasiado pesada.' });
+        }
+      }
+
+      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+      const snap = await bookingRef.get();
+      if (!snap.exists) return res.status(404).json({ error: 'Reserva no encontrada.' });
+      const b = snap.data() as any;
+      const isOwner = user.uid === b.ownerUid || user.uid === b.ownerId;
+      const isClient = user.uid === b.clientUid;
+      if (!isOwner && !isClient && !isUserAdmin(user)) {
+        return res.status(403).json({ error: 'No sos parte de este alquiler.' });
+      }
+      if (b.paymentStatus !== 'pagado') {
+        return res.status(400).json({ error: 'El alquiler todavía no está pagado.' });
+      }
+
+      if (stage === 'entrega') {
+        if (!isOwner && !isUserAdmin(user)) return res.status(403).json({ error: 'El acta de entrega la completa el dueño.' });
+        if (!['confirmado', 'entrega_pendiente'].includes(b.status)) {
+          return res.status(400).json({ error: 'Esta reserva ya no está en etapa de entrega.' });
+        }
+        if (b.entrega?.clientSignedAt) return res.status(400).json({ error: 'La entrega ya fue firmada por ambas partes.' });
+      } else {
+        if (!['en_curso', 'devolucion_pendiente', 'entrega_pendiente', 'confirmado'].includes(b.status)) {
+          return res.status(400).json({ error: 'Esta reserva no está en etapa de devolución.' });
+        }
+        if (b.devolucion?.ownerSignedAt) return res.status(400).json({ error: 'La devolución ya fue cerrada.' });
+      }
+
+      const now = new Date().toISOString();
+      const role = isOwner ? 'dueño' : isClient ? 'inquilino' : 'admin';
+      const evid = bookingRef.collection('evidencias');
+      const photoIds: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        const id = `${stage}-${Date.now()}-${i}`;
+        await evid.doc(id).set({ id, stage, dataUrl: photos[i], uploadedBy: user.uid, role, at: now });
+        photoIds.push(id);
+      }
+
+      const acta: any = {
+        checklist: cleanChecklist(checklist),
+        notes: String(notes).slice(0, 1000),
+        photoIds,
+        submittedBy: role,
+        submittedByUid: user.uid,
+        submittedAt: now,
+      };
+      if (role === 'dueño' || role === 'admin') acta.ownerSignedAt = now;
+      if (role === 'inquilino') acta.clientSignedAt = now;
+
+      const patch: any = { [stage]: acta, updatedAt: now };
+      if (stage === 'entrega') patch.status = 'entrega_pendiente';
+      if (stage === 'devolucion') patch.status = 'devolucion_pendiente';
+      await bookingRef.update(patch);
+
+      return res.json({ success: true, acta });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/acta:', err);
+      return res.status(500).json({ error: err.message || 'Error al guardar el acta.' });
+    }
+  });
+
+  // Firma de conformidad de la otra parte
+  app.post('/api/rentals/acta/firmar', authenticateFirebaseUser, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { bookingId, stage, observations = '' } = req.body || {};
+      if (!bookingId || (stage !== 'entrega' && stage !== 'devolucion')) {
+        return res.status(400).json({ error: 'Datos incompletos.' });
+      }
+      const bookingRef = adminDb.collection('rental_bookings').doc(bookingId);
+      const snap = await bookingRef.get();
+      if (!snap.exists) return res.status(404).json({ error: 'Reserva no encontrada.' });
+      const b = snap.data() as any;
+      const isOwner = user.uid === b.ownerUid || user.uid === b.ownerId;
+      const isClient = user.uid === b.clientUid;
+      const acta = b[stage];
+      if (!acta) return res.status(400).json({ error: 'Todavía no se cargó el acta.' });
+      const now = new Date().toISOString();
+      const obs = String(observations).slice(0, 1000);
+
+      if (stage === 'entrega') {
+        if (!isClient) return res.status(403).json({ error: 'La entrega la firma el inquilino.' });
+        if (acta.clientSignedAt) return res.json({ success: true, already: true });
+        await bookingRef.update({
+          'entrega.clientSignedAt': now,
+          'entrega.clientObservations': obs,
+          status: 'en_curso',
+          updatedAt: now,
+        });
+        return res.json({ success: true, status: 'en_curso' });
+      }
+
+      // devolución
+      if (isClient) {
+        if (acta.clientSignedAt) return res.json({ success: true, already: true });
+        await bookingRef.update({ 'devolucion.clientSignedAt': now, 'devolucion.clientObservations': obs, updatedAt: now });
+        return res.json({ success: true });
+      }
+      if (!isOwner && !isUserAdmin(user)) return res.status(403).json({ error: 'No sos parte de este alquiler.' });
+      await bookingRef.update({ 'devolucion.ownerSignedAt': now, 'devolucion.ownerObservations': obs, updatedAt: now });
+      const result = await settleReturn(bookingId);
+      return res.json({ success: true, status: 'devuelto', vouchers: result.vouchers, lateFeeRetained: (result as any).lateFeeRetained || 0 });
+    } catch (err: any) {
+      console.error('Error en /api/rentals/acta/firmar:', err);
+      return res.status(err.status || 500).json({ error: err.message || 'Error al firmar el acta.' });
     }
   });
 
@@ -1389,7 +1532,7 @@ Genera una respuesta profesional de alto impacto en formato JSON estrictamente e
       const now = new Date();
       const today = now.toISOString().slice(0, 10);
       const snap = await adminDb.collection('rental_bookings')
-        .where('status', 'in', ['confirmado', 'en_curso']).get();
+        .where('status', 'in', ['confirmado', 'entrega_pendiente', 'en_curso']).get();
 
       let updated = 0;
       for (const doc of snap.docs) {

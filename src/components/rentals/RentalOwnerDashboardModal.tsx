@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RentalActaModal, RENTAL_STATUS_LABEL } from './RentalActaModal';
 import {
   X,
   Wallet,
@@ -53,6 +54,7 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
   if (!isOpen) return null;
 
   const { user } = useAuth();
+  const [actaFor, setActaFor] = useState<{ booking: RentalBooking; stage: 'entrega' | 'devolucion' } | null>(null);
   const [platformFeeRate, setPlatformFeeRate] = useState<number>(0.05);
   const [isConnectingMp, setIsConnectingMp] = useState<boolean>(false);
 
@@ -109,7 +111,7 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
     }, 0);
 
   const computedPending = ownerBookings
-    .filter((b) => b.status === 'confirmado' || b.status === 'en_curso' || b.status === 'pendiente')
+    .filter((b) => ['confirmado', 'en_curso', 'pendiente', 'entrega_pendiente', 'devolucion_pendiente'].includes(b.status))
     .reduce((sum, b) => {
       const rate = b.platformFeeRate || platformFeeRate || 0.05;
       return sum + (b.ownerNetAmount || b.rentalSubtotal * (1 - rate) || b.totalPrice * (1 - rate));
@@ -426,7 +428,7 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
                                 : 'bg-emerald-100 text-emerald-800'
                               : 'bg-orange-100 text-orange-800'
                           }`}>
-                            {b.depositStatus === 'retenido_por_dano' ? 'Devuelto c/ Daños' : b.status}
+                            {b.depositStatus === 'retenido_por_dano' ? 'Devuelto c/ Daños' : (RENTAL_STATUS_LABEL[b.status] || b.status)}
                           </span>
                         </div>
                         <div className="text-slate-500 text-[11px]">
@@ -523,33 +525,56 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
                       </div>
                     )}
 
-                    {/* Action buttons if not yet completed */}
-                    {b.status !== 'devuelto' && (
+                    {/* Actas de entrega y devolución */}
+                    {b.paymentStatus === 'pagado' && b.status !== 'devuelto' && (
                       <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-slate-200/80">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBookingForDamage(b);
-                            setDamageEstimatedCost(String(b.depositAmount));
-                            setDamageDescription('');
-                          }}
-                          className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>⚠️ Reportar Daño / Retener Garantía</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await onConfirmItemReturned(b.id);
-                            showToast('¡Artículo marcado como devuelto conforme! Se liberó la garantía al cliente y se acreditó tu pago.');
-                          }}
-                          className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Confirmar Devuelto Conforme (100% OK)</span>
-                        </button>
+                        {(b.status === 'confirmado' || (b.status as string) === 'pendiente') && !b.entrega && (
+                          <button
+                            type="button"
+                            onClick={() => setActaFor({ booking: b, stage: 'entrega' })}
+                            className="py-2 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-[11px] cursor-pointer"
+                          >
+                            📋 Hacer acta de entrega
+                          </button>
+                        )}
+                        {b.entrega && (
+                          <button
+                            type="button"
+                            onClick={() => setActaFor({ booking: b, stage: 'entrega' })}
+                            className="py-2 px-3 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-[11px] cursor-pointer"
+                          >
+                            Ver acta de entrega{b.entrega.clientSignedAt ? ' ✔' : ' (falta firma)'}
+                          </button>
+                        )}
+                        {(b.status === 'en_curso' || b.status === 'devolucion_pendiente') && (
+                          <button
+                            type="button"
+                            onClick={() => setActaFor({ booking: b, stage: 'devolucion' })}
+                            className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] cursor-pointer"
+                          >
+                            {b.devolucion ? '📋 Revisar y confirmar devolución' : '📋 Registrar devolución'}
+                          </button>
+                        )}
+                        {(b.status === 'en_curso' || b.status === 'devolucion_pendiente') && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBookingForDamage(b);
+                              setDamageEstimatedCost(String(b.depositAmount));
+                              setDamageDescription('');
+                            }}
+                            className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Reportar daño</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {b.status === 'devuelto' && b.devolucion && (
+                      <div className="flex justify-end pt-1 border-t border-slate-200/80 gap-2">
+                        <button type="button" onClick={() => setActaFor({ booking: b, stage: 'entrega' })} className="py-1.5 px-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-[11px]">Acta de entrega</button>
+                        <button type="button" onClick={() => setActaFor({ booking: b, stage: 'devolucion' })} className="py-1.5 px-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-[11px]">Acta de devolución</button>
                       </div>
                     )}
                   </div>
@@ -731,6 +756,19 @@ export const RentalOwnerDashboardModal: React.FC<RentalOwnerDashboardModalProps>
           isAccepted={Boolean(bookingForContract.contractAccepted || bookingForContract.clientDni)}
         />
       )}
+    <RentalActaModal
+        booking={actaFor ? (bookings.find((x) => x.id === actaFor.booking.id) || actaFor.booking) : null}
+        stage={actaFor?.stage || 'entrega'}
+        role="owner"
+        isOpen={Boolean(actaFor)}
+        onClose={() => setActaFor(null)}
+        showToast={showToast}
+        onReportDamage={(bk) => {
+          setBookingForDamage(bk);
+          setDamageEstimatedCost(String(bk.depositAmount));
+          setDamageDescription('');
+        }}
+      />
     </div>
   );
 };

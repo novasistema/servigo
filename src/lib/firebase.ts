@@ -1327,3 +1327,9 @@ export function subscribeAllVouchers(onData: (vouchers: IssuedVoucher[]) => void
     () => onData([])
   );
 }
+
+/** Fotos de un acta (entrega o devolución) de un alquiler */
+export async function getActaPhotos(bookingId: string, stage: 'entrega' | 'devolucion'): Promise<{ id: string; dataUrl: string }[]> {
+  const snap = await getDocs(query(collection(db, 'rental_bookings', bookingId, 'evidencias'), where('stage', '==', stage)));
+  return snap.docs.map((d) => ({ id: d.id, dataUrl: (d.data() as any).dataUrl as string })).sort((a, b) => a.id.localeCompare(b.id));
+}

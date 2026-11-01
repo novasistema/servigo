@@ -243,11 +243,23 @@ service cloud.firestore {
             resource.data.ownerId == request.auth.uid
           )
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'paymentStatus', 'depositStatus', 'platformFeeRate', 'platformFeeAmount', 'ownerNetAmount', 'totalPrice'
+            'paymentStatus', 'depositStatus', 'platformFeeRate', 'platformFeeAmount', 'ownerNetAmount', 'totalPrice',
+            'status', 'entrega', 'devolucion', 'damageReport', 'lateFeeRetained', 'depositRefunded', 'closedAt'
           ])
         )
       );
       allow delete: if isAdmin();
+
+      // Fotos de las actas de entrega y devolución: solo las ven las partes; las sube el servidor
+      match /evidencias/{photoId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/rental_bookings/$(bookingId)).data.clientUid == request.auth.uid ||
+          get(/databases/$(database)/documents/rental_bookings/$(bookingId)).data.ownerUid == request.auth.uid ||
+          get(/databases/$(database)/documents/rental_bookings/$(bookingId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+        allow write: if false;
+      }
     }
 
     // Bookings collection (Solicitudes de servicios para profesionales)

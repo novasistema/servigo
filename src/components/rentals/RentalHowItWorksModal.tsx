@@ -96,10 +96,10 @@ export const RentalHowItWorksModal: React.FC<Props> = ({ isOpen, onClose, initia
                 Se hacen dos pagos: el <b>alquiler</b> y la <b>garantía</b>. La reserva queda confirmada sola cuando Mercado Pago aprueba el pago.
               </Step>
               <Step n={5} title="Retirá el producto">
-                Coordiná por WhatsApp el retiro con el dueño, o pedí un cadete de ServiGo si el dueño ofrece envío. Revisá juntos que funcione y sacale fotos.
+                Coordiná por WhatsApp el retiro con el dueño, o pedí un cadete si ofrece envío. El dueño completa el <b>acta de entrega</b> con fotos y vos la revisás y firmás desde <b>Mis alquileres</b>. Si algo no coincide, anotalo antes de firmar.
               </Step>
               <Step n={6} title="Devolvelo y recuperá tu garantía">
-                Devolvelo en la fecha acordada y en el mismo estado. Cuando el dueño confirma la devolución, la garantía se reintegra a tu medio de pago
+                Devolvelo en la fecha acordada y registrá el <b>acta de devolución</b> con fotos. Cuando el dueño la firma conforme, la garantía se reintegra a tu medio de pago
                 y recibís un <b>cupón de {convenio.percent}% OFF en Ferretería Bruzzone</b>.
               </Step>
             </ol>
@@ -125,8 +125,8 @@ export const RentalHowItWorksModal: React.FC<Props> = ({ isOpen, onClose, initia
                   lo cobrado se acumula en tu billetera de ServiGo y pedís la transferencia a tu CBU o alias.
                 </Step>
                 <Step n={6} title="Entregá y recibí de vuelta">
-                  Al entregar, sacá fotos del estado del producto. Cuando te lo devuelven, marcá <b>Devuelto conforme</b>, o <b>Reportar daño</b> si volvió roto
-                  o incompleto: la garantía cubre el arreglo hasta su monto.
+                  Al entregar, completá el <b>acta de entrega</b> (checklist y fotos) y el inquilino la firma. Al devolverlo, revisá el <b>acta de devolución</b>:
+                  firmá conforme para cerrar, o <b>Reportar daño</b> si volvió roto o incompleto. La garantía cubre el arreglo hasta su monto.
                 </Step>
               </ol>
               {onOpenPublish && (

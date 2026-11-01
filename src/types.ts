@@ -551,7 +551,28 @@ export interface RentalItem {
   updatedAt?: string;
 }
 
-export type RentalBookingStatus = 'pendiente' | 'confirmado' | 'en_curso' | 'devuelto' | 'cancelado';
+export type RentalBookingStatus =
+  | 'pendiente'
+  | 'pendiente_pago'
+  | 'confirmado'
+  | 'entrega_pendiente'
+  | 'en_curso'
+  | 'devolucion_pendiente'
+  | 'devuelto'
+  | 'cancelado';
+
+export interface RentalActa {
+  checklist: { funciona: boolean; accesorios: boolean; estetica: boolean; limpio: boolean };
+  notes: string;
+  photoIds: string[];
+  submittedBy: 'dueño' | 'inquilino' | 'admin';
+  submittedByUid: string;
+  submittedAt: string;
+  ownerSignedAt?: string;
+  clientSignedAt?: string;
+  ownerObservations?: string;
+  clientObservations?: string;
+}
 export type RentalPaymentStatus = 'pendiente_pago' | 'pagado' | 'pagado_en_custodia' | 'liquidado_a_dueno' | 'reembolsado';
 export type RentalDepositStatus = 'pendiente' | 'en_custodia' | 'devuelto_a_cliente' | 'retenido_por_dano';
 
@@ -565,6 +586,10 @@ export interface DamageReport {
 }
 
 export interface RentalBooking {
+  entrega?: RentalActa;
+  devolucion?: RentalActa;
+  lateFeeRetained?: number;
+  depositRefunded?: number;
   id: string;
   rentalItemId: string;
   rentalItemTitle: string;

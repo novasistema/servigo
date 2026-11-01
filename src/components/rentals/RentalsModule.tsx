@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { RentalHowItWorksModal } from './RentalHowItWorksModal';
 import { MyVouchersModal } from './MyVouchersModal';
+import { MyRentalsModal } from './MyRentalsModal';
 import { subscribeRentalPlatformFee } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -78,6 +79,7 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
   const [contractItem, setContractItem] = useState<RentalItem | null>(null);
   const [howItWorksTab, setHowItWorksTab] = useState<null | 'alquilar' | 'publicar' | 'precios' | 'preguntas'>(null);
   const [isMyVouchersOpen, setIsMyVouchersOpen] = useState(false);
+  const [isMyRentalsOpen, setIsMyRentalsOpen] = useState(false);
   const [feeRate, setFeeRate] = useState(0.05);
   React.useEffect(() => subscribeRentalPlatformFee(setFeeRate), []);
   const ownerPct = 100 - Math.round(feeRate * 100);
@@ -237,6 +239,17 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
                 className="flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <span>❓ ¿Cómo funciona? Guía completa</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => (currentUser ? setIsMyRentalsOpen(true) : requireAuth(() => setIsMyRentalsOpen(true), 'Ingresá para ver tus alquileres'))}
+                className="relative flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>📋 Mis alquileres</span>
+                {currentUser && bookings.some((b) => b.clientUid === currentUser.uid && b.status === 'entrega_pendiente' && b.entrega && !b.entrega.clientSignedAt) && (
+                  <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-black">FIRMAR</span>
+                )}
               </button>
 
               <button
@@ -622,6 +635,8 @@ export const RentalsModule: React.FC<RentalsModuleProps> = ({
         onClose={() => setHowItWorksTab(null)}
         onOpenPublish={() => setIsPublishModalOpen(true)}
       />
+
+      <MyRentalsModal isOpen={isMyRentalsOpen} onClose={() => setIsMyRentalsOpen(false)} bookings={bookings} uid={currentUser?.uid} showToast={showToast} />
 
       <MyVouchersModal isOpen={isMyVouchersOpen} onClose={() => setIsMyVouchersOpen(false)} showToast={showToast} />
 
