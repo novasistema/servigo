@@ -37,199 +37,112 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({
   )}`;
 
   return (
-    <div className="bg-white border border-slate-200 hover:border-orange-300 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden">
-      {/* Top Section */}
-      <div>
-        <div className="flex items-start justify-between gap-2 mb-2.5">
-          {/* Avatar & Online status */}
-          <div className="relative shrink-0">
-            <img
-              src={worker.avatar}
-              alt={worker.name}
-              className="w-13 h-13 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl object-cover border-2 border-slate-100 shadow-xs group-hover:scale-105 transition-transform"
-            />
-            {worker.availability.urgencies24h && (
-              <span
-                title="Atiende Urgencias 24hs"
-                className="absolute -bottom-1 -right-1 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white flex items-center gap-0.5 animate-pulse"
-              >
-                24h
-              </span>
-            )}
-          </div>
+    <article className="rounded-[20px] bg-sg-navy-2 text-white p-4 flex flex-col gap-3 font-sans">
+      <div className="flex items-start gap-3">
+        <div className="relative shrink-0">
+          <img src={worker.avatar} alt="" className="w-14 h-14 rounded-2xl object-cover bg-[#1c3366]" />
+          {worker.availability.urgencies24h && (
+            <span className="absolute -bottom-1 -right-1 bg-sg-orange text-[#2a1300] text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-sg-navy-2">24h</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="m-0 text-[17px] font-extrabold leading-tight truncate flex items-center gap-1.5">
+            <span className="truncate">{worker.name}</span>
+            {worker.verified && <ShieldCheck className="w-4 h-4 text-[#6aa8ff] shrink-0" aria-label="Verificado" />}
+          </h3>
+          <p className="m-0 mt-0.5 text-sm font-bold text-[#6aa8ff] truncate">{worker.tradeTitle}</p>
+          <p className="m-0 mt-1 text-xs text-[#a9b8db] flex items-center gap-1 truncate">
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" aria-hidden="true" />
+            <b className="text-white">{worker.rating.toFixed(1)}</b> ({worker.reviewCount})
+            <MapPin className="w-3.5 h-3.5 ml-1.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{worker.location}</span>
+          </p>
+        </div>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Compartir"
+            className="w-10 h-10 rounded-full border border-white/20 inline-flex items-center justify-center hover:bg-white/10 cursor-pointer"
+          >
+            {copied ? <Check className="w-4 h-4 text-sg-green" aria-hidden="true" /> : <Share2 className="w-4 h-4" aria-hidden="true" />}
+          </button>
+          {copied && (
+            <span className="absolute top-11 right-0 bg-white text-sg-navy text-[11px] font-extrabold px-2 py-1 rounded-lg whitespace-nowrap z-20">Enlace copiado</span>
+          )}
+        </div>
+      </div>
 
-          {/* Title & Ratings */}
-          <div className="flex-1 min-w-0 pr-1">
-            <div className="flex items-center gap-1 flex-wrap">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-orange-600 transition-colors truncate">
-                {worker.name}
-              </h3>
-              {worker.verified && (
-                <span
-                  title="Profesional Verificado ServiGo"
-                  className="bg-blue-50 text-blue-700 border border-blue-200 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5"
-                >
-                  <ShieldCheck className="w-3 h-3 text-blue-600" />
-                  Verificado
-                </span>
-              )}
-            </div>
+      {worker.matricula && (
+        <p className="m-0 text-xs text-[#c3cfea] flex items-center gap-1.5">
+          <Award className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+          Matrícula {worker.matricula}
+        </p>
+      )}
 
-            <p className="text-xs font-bold text-orange-600 mt-0.5 truncate">
-              {worker.tradeTitle}
-            </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-sg-navy px-3 py-2">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-[#a9b8db]">Por hora</span>
+          <span className="block text-base font-black">${worker.hourlyRate.toLocaleString('es-AR')}</span>
+        </div>
+        <div className="rounded-xl bg-sg-navy px-3 py-2">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-[#a9b8db]">Visita</span>
+          <span className="block text-base font-black">${worker.visitFee.toLocaleString('es-AR')}</span>
+        </div>
+      </div>
 
-            {worker.matricula && (
-              <p className="text-[10px] sm:text-[11px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
-                <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span className="truncate">{worker.matricula}</span>
-              </p>
-            )}
-          </div>
+      {worker.ferreteroPartner && (
+        <p className="m-0 text-xs text-[#d6def0] flex items-center gap-2">
+          <Ticket className="w-4 h-4 text-[#ffb547] shrink-0" aria-hidden="true" />
+          Socio <b className="text-white">Ferretería Bruzzone</b>: descuento en insumos
+        </p>
+      )}
 
-          {/* Share Button */}
-          <div className="relative shrink-0">
+      {worker.bio && <p className="m-0 text-sm text-[#c3cfea] line-clamp-2 leading-snug">{worker.bio}</p>}
+
+      <div className="grid grid-cols-2 gap-2 mt-auto pt-1">
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-11 rounded-xl bg-sg-blue hover:brightness-110 text-white font-extrabold text-sm inline-flex items-center justify-center gap-1.5"
+        >
+          <MessageCircle className="w-4 h-4" aria-hidden="true" /> WhatsApp
+        </a>
+        <button
+          type="button"
+          onClick={() => onOpenBooking(worker)}
+          className="h-11 rounded-xl border border-white/25 hover:bg-white/10 text-white font-bold text-sm inline-flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <Calendar className="w-4 h-4" aria-hidden="true" /> Agendar
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <button type="button" onClick={() => onSelectWorker(worker)} className="font-extrabold text-[#6aa8ff] hover:text-white inline-flex items-center gap-1 cursor-pointer">
+          Ver perfil y opiniones <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        </button>
+        <div className="flex gap-3">
+          {onOpenReviewModal && (
+            <button type="button" onClick={() => onOpenReviewModal(worker)} className="font-semibold text-[#a9b8db] hover:text-white inline-flex items-center gap-1 cursor-pointer">
+              <MessageSquare className="w-4 h-4" aria-hidden="true" /> Calificar
+            </button>
+          )}
+          {onOpenCouponModal && (
             <button
               type="button"
-              onClick={handleShare}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer border border-slate-200/80 active:scale-95"
-              title="Compartir publicación"
-              aria-label="Compartir publicación"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCouponModal(worker);
+              }}
+              className="font-semibold text-[#a9b8db] hover:text-white inline-flex items-center gap-1 cursor-pointer"
+              title="Entregar cupón de descuento al cliente"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
-            </button>
-            {copied && (
-              <span className="absolute top-10 right-0 bg-slate-900 text-white text-[10px] font-extrabold px-2 py-1 rounded-lg shadow-lg whitespace-nowrap animate-fadeIn z-20">
-                ¡Enlace copiado!
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Stars & Review Button */}
-        <div className="flex items-center gap-2 mb-2.5 flex-wrap">
-          <div className="flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full font-black text-xs">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-            <span>{worker.rating.toFixed(1)}</span>
-            <span className="text-slate-500 font-normal">({worker.reviewCount})</span>
-          </div>
-
-          {onOpenReviewModal && (
-            <button
-              onClick={() => onOpenReviewModal(worker)}
-              className="text-[10px] font-extrabold bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-orange-700 px-2 py-0.5 rounded-full flex items-center gap-1 transition-all border border-slate-200 active:scale-95"
-              title="Calificar y dejar reseña de mi experiencia"
-            >
-              <MessageSquare className="w-3 h-3 text-orange-600" />
-              <span>★ Calificar</span>
+              <Ticket className="w-4 h-4" aria-hidden="true" /> Cupón
             </button>
           )}
         </div>
-
-        {/* Location & Coverage */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-2.5 bg-slate-50 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-100">
-          <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-          <span className="font-bold text-slate-800 shrink-0">{worker.location}</span>
-          <span className="text-slate-300">|</span>
-          <span className="text-slate-500 truncate">Zonas: {worker.zones.join(', ')}</span>
-        </div>
-
-        {/* Ferretería Bruzzone Partner Badge */}
-        {worker.ferreteroPartner && (
-          <div className="mb-2.5 bg-orange-50/80 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-orange-200 text-xs flex items-center gap-2">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 font-black text-[10px] sm:text-[11px] shadow-xs">
-              FB
-            </div>
-            <div className="min-w-0">
-              <span className="font-bold text-orange-900 block text-[10px] sm:text-[11px] leading-tight">
-                Socio Ferretería Bruzzone
-              </span>
-              <span className="text-[10px] text-orange-700 block truncate">
-                10% OFF en mano de obra con insumos Bruzzone
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Rates & Schedule Summary */}
-        <div className="grid grid-cols-2 gap-2 mb-2.5 text-xs">
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-100">
-            <span className="text-[9px] sm:text-[10px] text-slate-400 block font-bold uppercase">Tarifa estim.</span>
-            <span className="text-xs sm:text-sm font-black text-slate-900">
-              ${worker.hourlyRate.toLocaleString('es-AR')}{' '}
-              <span className="text-[9px] sm:text-[10px] text-slate-500 font-normal">/hr</span>
-            </span>
-          </div>
-
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-100">
-            <span className="text-[9px] sm:text-[10px] text-slate-400 block font-bold uppercase">Visita / Diag.</span>
-            <span className="text-xs sm:text-sm font-black text-slate-900">
-              ${worker.visitFee.toLocaleString('es-AR')}
-            </span>
-          </div>
-        </div>
-
-        {/* Worker Delivers Coupon Benefit Button */}
-        {onOpenCouponModal && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenCouponModal(worker);
-            }}
-            className="w-full mb-2.5 py-2 px-3 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 hover:from-amber-500/25 hover:to-orange-500/20 border border-amber-300 rounded-xl sm:rounded-2xl text-amber-950 font-extrabold text-[11px] flex items-center justify-between gap-1.5 transition-all shadow-xs active:scale-98 cursor-pointer group/coupon"
-            title="Entregar cupón oficial de descuento a tu cliente por elegir tu servicio"
-          >
-            <div className="flex items-center gap-1.5 truncate">
-              <span className="text-sm">🎟️</span>
-              <span className="truncate group-hover/coupon:text-orange-950">Entregar Cupón al Cliente</span>
-            </div>
-            <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase shrink-0 shadow-xs">
-              Beneficio
-            </span>
-          </button>
-        )}
-
-        {/* Bio snippet */}
-        <p className="text-xs text-slate-500 line-clamp-2 mb-2.5 leading-relaxed">
-          {worker.bio}
-        </p>
       </div>
-
-      {/* Action Buttons */}
-      <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
-        <div className="grid grid-cols-2 gap-2">
-          {/* WhatsApp Direct */}
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
-          >
-            <MessageCircle className="w-4 h-4 shrink-0" />
-            <span>WhatsApp</span>
-          </a>
-
-          {/* Book / Request Quote */}
-          <button
-            onClick={() => onOpenBooking(worker)}
-            className="py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
-          >
-            <Calendar className="w-4 h-4 shrink-0" />
-            <span>Agendar</span>
-          </button>
-        </div>
-
-        {/* Full Profile Link */}
-        <button
-          onClick={() => onSelectWorker(worker)}
-          className="w-full py-1 text-center text-[11px] sm:text-xs text-slate-500 hover:text-orange-600 font-bold flex items-center justify-center gap-1 group/btn transition-colors"
-        >
-          <span>Ver perfil completo, fotos y opiniones</span>
-          <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform text-orange-500" />
-        </button>
-      </div>
-    </div>
+    </article>
   );
 };
-

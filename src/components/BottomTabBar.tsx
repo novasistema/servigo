@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Wrench, Bike, RotateCcw } from 'lucide-react';
+import { Home, Wrench, Utensils, RotateCcw } from 'lucide-react';
 
 export type BottomTab = 'inicio' | 'servicios' | 'delivery' | 'alquiler';
 
@@ -11,7 +11,7 @@ interface BottomTabBarProps {
 const TABS: { id: BottomTab; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'inicio', label: 'Inicio', icon: Home, color: 'text-white' },
   { id: 'servicios', label: 'Servicios', icon: Wrench, color: 'text-[#6aa8ff]' },
-  { id: 'delivery', label: 'Delivery', icon: Bike, color: 'text-sg-orange' },
+  { id: 'delivery', label: 'Delivery', icon: Utensils, color: 'text-sg-orange' },
   { id: 'alquiler', label: 'Alquiler', icon: RotateCcw, color: 'text-sg-green' },
 ];
 

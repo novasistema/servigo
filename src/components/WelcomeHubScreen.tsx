@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wrench, Bike, RotateCcw, Search, ChevronRight, Gift, FileText, Crown } from 'lucide-react';
+import { Wrench, Bike, RotateCcw, Search, ChevronRight, Gift, FileText, Crown, Utensils } from 'lucide-react';
 import servigoIcon from '../assets/icon.jpg';
 
 type HubModule = 'servicios' | 'delivery' | 'alquiler' | 'cadetes';
@@ -45,8 +45,8 @@ const MODULES: {
   {
     id: 'delivery',
     title: 'Delivery',
-    text: 'Comercios de tu zona, a tu puerta',
-    icon: Bike,
+    text: 'Pedí comida de los locales de la zona',
+    icon: Utensils,
     className: 'bg-sg-orange text-[#2a1300]',
     iconBg: 'bg-white/30',
   },

@@ -520,116 +520,74 @@ export const ClientDeliveryView: React.FC<ClientDeliveryViewProps> = ({
         /* VIEW 2: DIRECTORY WITH SEARCH & DUAL SELECTION MODE */
         /* ================================================================ */
         <div className="space-y-6">
-          {/* Header & User Shipping Info Quick Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-            <div className="space-y-1">
-              <ServiGoDeliveryLogo size="md" />
-              <p className="text-xs text-slate-500 mt-1 font-medium">
-                Pide por comida en particular o elige tu casa de comidas preferida con entrega en minutos.
+          {/* Buscador */}
+          <div className="space-y-3">
+            <label htmlFor="deli-buscar" className="sr-only">Buscar comida o local</label>
+            <div className="flex items-center gap-2.5 h-[52px] px-4 rounded-2xl bg-white border border-slate-200 shadow-xs text-slate-900">
+              <Search className="w-5 h-5 shrink-0 text-slate-700" aria-hidden="true" />
+              <input
+                id="deli-buscar"
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={browseMode === 'dishes' ? 'Pizza, lomito, empanadas…' : 'Nombre del local…'}
+                className="flex-1 min-w-0 bg-transparent outline-none text-base font-medium placeholder:text-slate-500"
+              />
+            </div>
+
+            {/* Ver por plato o por local */}
+            <div role="tablist" aria-label="Cómo querés buscar" className="inline-flex gap-1 p-1 rounded-2xl bg-slate-200/70">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={browseMode === 'dishes'}
+                onClick={() => setBrowseMode('dishes')}
+                className={`h-10 px-4 rounded-xl text-sm inline-flex items-center gap-1.5 cursor-pointer ${
+                  browseMode === 'dishes' ? 'bg-white text-slate-900 font-extrabold shadow-xs' : 'text-slate-600 font-semibold'
+                }`}
+              >
+                <UtensilsCrossed className="w-4 h-4" aria-hidden="true" /> Por comida
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={browseMode === 'merchants'}
+                onClick={() => setBrowseMode('merchants')}
+                className={`h-10 px-4 rounded-xl text-sm inline-flex items-center gap-1.5 cursor-pointer ${
+                  browseMode === 'merchants' ? 'bg-white text-slate-900 font-extrabold shadow-xs' : 'text-slate-600 font-semibold'
+                }`}
+              >
+                <Store className="w-4 h-4" aria-hidden="true" /> Por local
+              </button>
+            </div>
+          </div>
+
+          {merchants.length === 0 && (
+            <div className="rounded-3xl bg-white border border-slate-200 p-7 text-center space-y-3">
+              <h3 className="m-0 text-xl font-black text-slate-900">Estamos sumando locales</h3>
+              <p className="m-0 text-sm text-slate-600 max-w-md mx-auto">
+                ¿Tenés una pizzería, rotisería o casa de comidas? Sumá tu local gratis y recibí pedidos desde tu celular.
               </p>
             </div>
-
-            {/* Current Shipping Address button */}
-            <button
-              onClick={onOpenProfileModal}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-orange-50 text-orange-800 border border-orange-200 text-xs font-bold hover:bg-orange-100 transition-all cursor-pointer self-start sm:self-auto"
-            >
-              <MapPin className="w-4 h-4 text-orange-600 shrink-0" />
-              <div className="text-left">
-                <span className="text-[10px] text-orange-600 font-extrabold uppercase block">
-                  Enviar a:
-                </span>
-                <span className="truncate max-w-[180px] block">
-                  {userProfile.deliveryAddress || 'Configurar dirección'}
-                </span>
-              </div>
-            </button>
-          </div>
-
-          {/* DUAL MODE SELECTOR: POR COMIDA EN PARTICULAR vs POR CASA DE COMIDAS */}
-          <div className="bg-slate-900 p-2 sm:p-2.5 rounded-3xl shadow-lg border border-slate-800">
-            <div className="flex items-center gap-2">
-              {/* Option 1: Por Comida en Particular */}
-              <button
-                onClick={() => setBrowseMode('dishes')}
-                className={`flex-1 py-3 px-3 sm:px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
-                  browseMode === 'dishes'
-                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <UtensilsCrossed className="w-4 h-4 text-amber-300" />
-                  <span>🍕 Elegir por Comida en Particular</span>
-                </div>
-                <span className="text-[10px] font-normal opacity-90 hidden md:inline">
-                  (Pizzas, Hamburguesas, Empanadas, Lomitos)
-                </span>
-              </button>
-
-              {/* Option 2: Por Casa de Comidas */}
-              <button
-                onClick={() => setBrowseMode('merchants')}
-                className={`flex-1 py-3 px-3 sm:px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
-                  browseMode === 'merchants'
-                    ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Store className="w-4 h-4 text-orange-600" />
-                  <span>🏪 Elegir por Casa de Comidas</span>
-                </div>
-                <span className="text-[10px] font-normal opacity-90 hidden md:inline">
-                  (Ver solo el menú de ese comercio)
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Unified Search bar */}
-          <div className="relative">
-            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
-                browseMode === 'dishes'
-                  ? 'Buscar por comida en particular (ej: Pizza Especial, Empanadas, Lomito, Burger doble)...'
-                  : 'Buscar casa de comidas o comercio (ej: Don Antonio, ServiBurger, Farmacia, Kiosco)...'
-              }
-              className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-orange-500 shadow-xs"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
-              >
-                ✕ Limpiar
-              </button>
-            )}
-          </div>
+          )}
 
           {/* ============================================================== */}
           {/* MODE 1: ELEGIR POR COMIDA EN PARTICULAR (PLATOS Y COMIDAS) */}
           {/* ============================================================== */}
-          {browseMode === 'dishes' && (
+          {merchants.length > 0 && browseMode === 'dishes' && (
             <div className="space-y-4 animate-fadeIn">
               {/* Quick food filters */}
               <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
-                  Filtrar por tipo de comida:
-                </span>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
                   {foodQuickFilters.map((food) => (
                     <button
                       key={food.id}
                       onClick={() => setSelectedFoodType(food.id)}
-                      className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      aria-pressed={selectedFoodType === food.id}
+                      className={`shrink-0 h-10 px-4 rounded-full text-sm whitespace-nowrap transition-colors cursor-pointer ${
                         selectedFoodType === food.id
-                          ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          ? 'bg-sg-orange text-[#2a1300] font-extrabold'
+                          : 'bg-white text-slate-800 font-semibold border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       {food.label}
@@ -771,7 +729,7 @@ export const ClientDeliveryView: React.FC<ClientDeliveryViewProps> = ({
           {/* ============================================================== */}
           {/* MODE 2: ELEGIR POR CASA DE COMIDAS / COMERCIOS */}
           {/* ============================================================== */}
-          {browseMode === 'merchants' && (
+          {merchants.length > 0 && browseMode === 'merchants' && (
             <div className="space-y-4 animate-fadeIn">
               {/* Categories Horizontal Pills */}
               <div className="space-y-1.5">
@@ -896,7 +854,7 @@ export const ClientDeliveryView: React.FC<ClientDeliveryViewProps> = ({
 
       {/* Floating Bottom Cart Bar */}
       {cartItemCount > 0 && activeCartMerchant && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-40">
+        <div className="fixed bottom-[84px] sm:bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-40">
           <div className="bg-slate-950 text-white rounded-3xl p-3.5 shadow-2xl border border-orange-500 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
             <div className="flex items-center gap-2.5 truncate">
               <div className="w-10 h-10 rounded-2xl bg-orange-600 text-white flex items-center justify-center font-black text-sm shadow-md shrink-0">

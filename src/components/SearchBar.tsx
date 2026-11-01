@@ -91,185 +91,107 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     setOnlyBruzzonePartner(false);
   };
 
+  const chip = (on: boolean) =>
+    `shrink-0 h-10 px-4 rounded-full text-sm whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+      on ? 'bg-sg-blue text-white font-extrabold' : 'border border-white/20 text-white font-semibold hover:bg-white/10'
+    }`;
+
   return (
-    <div className="bg-white border-b border-slate-200 p-2.5 sm:p-4 relative sm:sticky sm:top-[88px] z-20 shadow-xs">
-      <div className="max-w-7xl mx-auto space-y-2.5 sm:space-y-3">
-        {/* Search Hero Box */}
-        <div className="p-1.5 sm:p-2 bg-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-inner flex flex-col md:flex-row gap-1.5 sm:gap-2">
-          {/* Text input */}
-          <div className="flex-1 bg-white rounded-xl sm:rounded-2xl flex items-center px-3 sm:px-4 py-1.5 sm:py-2.5 border border-slate-200/80 shadow-xs">
-            <span className="text-orange-500 mr-2 text-base sm:text-lg">🔍</span>
+    <div className="font-sans text-white">
+      <div className="max-w-7xl mx-auto px-5 space-y-3">
+        <div className="flex flex-col md:flex-row gap-2">
+          <label htmlFor="serv-buscar" className="sr-only">Buscar servicio o profesional</label>
+          <div className="md:flex-1 shrink-0 flex items-center gap-2.5 h-[52px] px-4 rounded-2xl bg-white text-sg-navy">
+            <Search className="w-5 h-5 shrink-0" aria-hidden="true" />
             <input
-              type="text"
+              id="serv-buscar"
+              type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="¿Qué servicio o profesional buscas hoy? (ej. Gasista)..."
-              className="w-full bg-transparent outline-none text-slate-800 placeholder-slate-400 font-medium text-xs sm:text-sm"
+              placeholder="Gasista, electricista, plomero…"
+              className="flex-1 min-w-0 bg-transparent outline-none text-base font-medium placeholder:text-slate-500"
             />
             {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
+              <button type="button" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda" className="w-9 h-9 rounded-full inline-flex items-center justify-center hover:bg-slate-100 cursor-pointer">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
           </div>
-
-          {/* Location input */}
-          <div className="md:w-64 bg-white rounded-xl sm:rounded-2xl flex items-center px-3 sm:px-4 py-1.5 sm:py-2.5 border border-slate-200/80 shadow-xs">
-            <span className="text-slate-400 mr-2 text-base sm:text-lg">📍</span>
-            <select
-              value={selectedZone}
-              onChange={(e) => setSelectedZone(e.target.value)}
-              className="bg-transparent outline-none text-slate-700 font-medium text-xs sm:text-sm w-full cursor-pointer"
-            >
-              <option value="all">Todas las Zonas</option>
-              {uniqueZones.map((zone, idx) => (
-                <option key={`${zone}-${idx}`} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
+            <label htmlFor="serv-zona" className="sr-only">Localidad</label>
+            <div className="relative flex-1 md:w-60">
+              <MapPin className="w-4 h-4 text-[#6aa8ff] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+              <select
+                id="serv-zona"
+                value={selectedZone}
+                onChange={(e) => setSelectedZone(e.target.value)}
+                className="w-full h-[52px] md:h-[52px] bg-sg-navy-2 border border-white/15 text-white text-sm font-semibold pl-9 pr-3 rounded-2xl focus:outline-hidden focus:border-sg-blue cursor-pointer"
+              >
+                <option value="all">Todas las localidades</option>
+                {uniqueZones.map((zone, idx) => (
+                  <option key={`${zone}-${idx}`} value={zone}>{zone}</option>
+                ))}
+              </select>
+            </div>
             <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`py-2 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl border text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition-all shrink-0 ${
-                activeFilterCount > 0
-                  ? 'bg-orange-100 text-orange-700 border-orange-300'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              aria-expanded={showFilters}
+              className={`h-[52px] px-4 rounded-2xl text-sm font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer ${
+                activeFilterCount > 0 ? 'bg-sg-blue text-white' : 'bg-sg-navy-2 border border-white/15 text-white hover:bg-[#1a3060]'
               }`}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-600" />
-              <span>Filtros</span>
+              <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+              Filtros
               {activeFilterCount > 0 && (
-                <span className="bg-orange-600 text-white rounded-full text-[10px] w-4 h-4 font-black flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
+                <span className="bg-white text-sg-navy rounded-full text-[11px] w-5 h-5 font-black inline-flex items-center justify-center">{activeFilterCount}</span>
               )}
             </button>
           </div>
         </div>
 
-        {/* Trade Category Badges */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-          {allTradeOptions.map((trade, idx) => {
-            const isSelected = selectedTrade === trade.id;
-            return (
-              <button
-                key={`${trade.id}-${idx}`}
-                onClick={() => setSelectedTrade(trade.id)}
-                className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border transition-all ${
-                  isSelected
-                    ? 'bg-white border-orange-500 text-orange-600 shadow-xs font-black'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-orange-200'
-                }`}
-              >
-                <span className={`p-0.5 sm:p-1 rounded-lg sm:rounded-xl text-xs ${trade.color}`}>
-                  {trade.icon}
-                </span>
-                <span>{trade.label}</span>
-              </button>
-            );
-          })}
+        {/* Rubros */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5" role="group" aria-label="Rubros">
+          {allTradeOptions.map((trade, idx) => (
+            <button
+              key={`${trade.id}-${idx}`}
+              type="button"
+              aria-pressed={selectedTrade === trade.id}
+              onClick={() => setSelectedTrade(trade.id)}
+              className={chip(selectedTrade === trade.id)}
+            >
+              {trade.id === 'all' ? 'Todos' : trade.label}
+            </button>
+          ))}
         </div>
 
-        {/* Expanded Filters Accordion */}
         {showFilters && (
-          <div className="pt-4 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeIn">
-            {/* Filter Toggles */}
+          <div className="rounded-2xl bg-sg-navy-2 p-4 grid gap-4 md:grid-cols-3 animate-fadeIn">
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">
-                Especialidad Requerida
-              </span>
+              <span className="text-xs font-extrabold text-sg-muted uppercase tracking-[0.06em] block">Mostrar solo</span>
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setOnlyMatriculados(!onlyMatriculados)}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    onlyMatriculados
-                      ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 text-green-600" />
-                  <span>Matriculado Oficial</span>
+                <button type="button" aria-pressed={onlyMatriculados} onClick={() => setOnlyMatriculados(!onlyMatriculados)} className={chip(onlyMatriculados)}>
+                  <ShieldCheck className="w-4 h-4" aria-hidden="true" /> Matriculados
                 </button>
-
-                <button
-                  onClick={() => setOnly24h(!only24h)}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    only24h
-                      ? 'bg-rose-100 text-rose-700 border-rose-300'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <Flame className="w-4 h-4 text-rose-600" />
-                  <span>Urgencias 24 hs</span>
+                <button type="button" aria-pressed={only24h} onClick={() => setOnly24h(!only24h)} className={chip(only24h)}>
+                  <Flame className="w-4 h-4" aria-hidden="true" /> Urgencias 24 h
                 </button>
-
-                <button
-                  onClick={() => setOnlyBruzzonePartner(!onlyBruzzonePartner)}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    onlyBruzzonePartner
-                      ? 'bg-orange-100 text-orange-700 border-orange-300'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <Tag className="w-4 h-4 text-orange-600" />
-                  <span>Red Ferretería Bruzzone</span>
+                <button type="button" aria-pressed={onlyBruzzonePartner} onClick={() => setOnlyBruzzonePartner(!onlyBruzzonePartner)} className={chip(onlyBruzzonePartner)}>
+                  <Tag className="w-4 h-4" aria-hidden="true" /> Red Bruzzone
                 </button>
               </div>
             </div>
-
-            {/* Sorting */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">
-                Ordenar Por
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSortBy('rating')}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                    sortBy === 'rating'
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                >
-                  ⭐ Mejor Valorado
-                </button>
-                <button
-                  onClick={() => setSortBy('jobs')}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                    sortBy === 'jobs'
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                >
-                  🏆 Más Trabajos
-                </button>
-                <button
-                  onClick={() => setSortBy('price')}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                    sortBy === 'price'
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                >
-                  💲 Menor Tarifa
-                </button>
+              <span className="text-xs font-extrabold text-sg-muted uppercase tracking-[0.06em] block">Ordenar por</span>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" aria-pressed={sortBy === 'rating'} onClick={() => setSortBy('rating')} className={chip(sortBy === 'rating')}>Mejor valorados</button>
+                <button type="button" aria-pressed={sortBy === 'jobs'} onClick={() => setSortBy('jobs')} className={chip(sortBy === 'jobs')}>Más trabajos</button>
+                <button type="button" aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')} className={chip(sortBy === 'price')}>Menor tarifa</button>
               </div>
             </div>
-
-            {/* Clear All */}
-            <div className="flex items-end justify-end">
-              <button
-                onClick={resetFilters}
-                className="text-xs text-orange-600 hover:text-orange-700 underline font-bold py-2 px-3"
-              >
-                Restablecer todos los filtros
+            <div className="flex items-end md:justify-end">
+              <button type="button" onClick={resetFilters} className="h-10 text-sm font-extrabold text-[#6aa8ff] hover:text-white cursor-pointer">
+                Borrar filtros
               </button>
             </div>
           </div>

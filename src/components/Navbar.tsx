@@ -18,6 +18,7 @@ import {
   Home,
   LayoutGrid,
   UtensilsCrossed,
+  Utensils,
   Pizza,
   Clock,
   Briefcase,
@@ -99,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <nav aria-label="Módulos" className="hidden sm:flex items-center gap-1.5">
           {([
             { id: 'search', label: 'Servicios', icon: Wrench, on: !isDeliveryActive && !isAlquilerActive && activeTab !== 'cadetes', cls: 'bg-sg-blue text-white' },
-            { id: 'delivery', label: 'Delivery', icon: Bike, on: isDeliveryActive || activeTab === 'cadetes', cls: 'bg-sg-orange text-[#2a1300]' },
+            { id: 'delivery', label: 'Delivery', icon: Utensils, on: isDeliveryActive || activeTab === 'cadetes', cls: 'bg-sg-orange text-[#2a1300]' },
             { id: 'alquiler', label: 'Alquiler', icon: RotateCcw, on: isAlquilerActive, cls: 'bg-sg-green text-[#052e16]' },
           ] as const).map((m) => {
             const Icon = m.icon;
@@ -169,297 +170,49 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
-      <div className={`${isAlquilerActive ? 'hidden' : ''} bg-white border-b border-slate-200/80 text-slate-700 px-2 sm:px-3 py-1 shadow-xs`}>
-        <div className="max-w-7xl mx-auto flex items-center justify-start gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
-          {/* BOTÓN VOLVER AL COMIENZO (Siempre disponible) */}
-          {onOpenWelcomeHub && (
-            <button
-              onClick={onOpenWelcomeHub}
-              className="hidden sm:flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 bg-slate-900 text-white hover:bg-slate-800 shadow-xs cursor-pointer active:scale-95"
-              title="Volver al menú de inicio y selector de módulos"
-            >
-              <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-              <span>Inicio</span>
-            </button>
-          )}
-
-          {isAlquilerActive ? (
-            /* ============================================================ */
-            /* MÓDULO SERVIGO ALQUILER DE PRODUCTOS (ESTILO GIVY)           */
-            /* ============================================================ */
-            <>
-              <button
-                onClick={() => setActiveTab('alquiler')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 bg-emerald-600 text-white shadow-md"
-              >
-                <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>🔄 Catálogo de Alquileres</span>
-                {rentalItemsCount > 0 && (
-                  <span className="bg-white text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
-                    {rentalItemsCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => {
-                  if (onOpenPublishRental) onOpenPublishRental();
-                }}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-orange-700 hover:text-orange-900 hover:bg-orange-50 border border-orange-200 cursor-pointer"
-              >
-                <span>➕ Publicar mi Producto</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('cadetes')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 cursor-pointer"
-                title="Cadetes para fletes o traslados de herramientas"
-              >
-                <Bike className="w-3.5 h-3.5 text-orange-600" />
-                <span>🛵 Cadetes para Traslado</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('search')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-blue-700 hover:text-blue-900 hover:bg-blue-50 border border-blue-200 cursor-pointer"
-                title="Ir a Servicios y Profesionales"
-              >
-                <Wrench className="w-3.5 h-3.5 text-blue-600" />
-                <span>🛠️ Ir a Servicios</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('delivery')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-orange-700 hover:text-orange-900 hover:bg-orange-50 border border-orange-200 cursor-pointer"
-                title="Ir a Delivery de Comida"
-              >
-                <Pizza className="w-3.5 h-3.5 text-orange-600" />
-                <span>🍕 Ir a Delivery</span>
-              </button>
-            </>
-          ) : isDeliveryActive ? (
-            /* ============================================================ */
-            /* MÓDULO SERVIGO DELIVERY: TABS EXCLUSIVOS DE COMERCIOS DE COMIDA */
-            /* ============================================================ */
-            <>
-              <button
-                onClick={() => setActiveTab('delivery')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 bg-orange-600 text-white shadow-md"
-              >
-                <Pizza className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>🍕 Comercios de Comida</span>
-                {deliveryPendingCount > 0 && (
-                  <span className="bg-white text-orange-700 text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
-                    {deliveryPendingCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab('alquiler')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 cursor-pointer"
-                title="Alquiler de productos y herramientas"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
-                <span>🔄 Alquileres</span>
-                <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                  Nuevo
-                </span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('cadetes')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-orange-700 hover:text-orange-900 hover:bg-orange-50 border border-orange-200 cursor-pointer"
-                title="Ver cadetes independientes disponibles para mandados y envíos"
-              >
-                <Bike className="w-3.5 h-3.5 text-orange-600" />
-                <span>🛵 Cadetes Disponibles</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('search')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-blue-700 hover:text-blue-900 hover:bg-blue-50 border border-blue-200 cursor-pointer"
-                title="Ir al módulo de servicios y profesionales de oficios"
-              >
-                <Wrench className="w-3.5 h-3.5 text-blue-600" />
-                <span>🛠️ Ir a ServiGo Servicios</span>
-              </button>
-            </>
-          ) : (
-            /* ============================================================ */
-            /* MÓDULO SERVIGO SERVICIOS: TABS DE OFICIOS, REMISES & BRUZZONE */
-            /* ============================================================ */
-            <>
-              {tabConfig.search && (
-                <button
-                  onClick={() => setActiveTab('search')}
-                  className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'search'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Buscar Oficio</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => setActiveTab('alquiler')}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 cursor-pointer"
-                title="Alquiler de productos y herramientas"
-              >
-                <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-                <span>🔄 Alquileres</span>
-                <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                  Nuevo
-                </span>
-              </button>
-
-
-              {tabConfig.shops && (
-                <button
-                  onClick={() => setActiveTab('shops')}
-                  className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'shops'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
-                  <span>Comercios & Negocios</span>
-                </button>
-              )}
-
-              {tabConfig.jobs !== false && (
-                <button
-                  onClick={() => setActiveTab('jobs')}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'jobs'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
-                  <span>Bolsa de Trabajo</span>
-                  <span className="bg-indigo-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                    CV
-                  </span>
-                </button>
-              )}
-
-              <button
-                onClick={() => setActiveTab('cadetes')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                  activeTab === 'cadetes'
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Bike className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
-                <span>🛵 Cadetes & Envíos</span>
-                <span className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                  En Vivo
-                </span>
-              </button>
-
-              {tabConfig.remises !== false && (
-                <button
-                  onClick={() => setActiveTab('remises')}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'remises'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
-                  <span>Remises / Viajes</span>
-                  <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                    Nuevo
-                  </span>
-                </button>
-              )}
-
-              {tabConfig.ai && (
-                <button
-                  onClick={() => setActiveTab('ai')}
-                  className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'ai'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
-                  <span>Diagnóstico IA</span>
-                </button>
-              )}
-
-              {tabConfig.register && (
-                <button
-                  onClick={() => setActiveTab('register')}
-                  className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'register'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-                  <span>Soy Trabajador</span>
-                </button>
-              )}
-
-              {tabConfig.sponsor && (
-                <button
-                  onClick={() => setActiveTab('bruzzone')}
-                  className={`flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'bruzzone'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
-                  <span>Ferretería Bruzzone</span>
-                </button>
-              )}
-
-              {tabConfig.bookings && (
-                <button
-                  onClick={() => setActiveTab('bookings')}
-                  className={`relative flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    activeTab === 'bookings'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Mis Solicitudes</span>
-                  {bookingCount > 0 && (
-                    <span className="bg-orange-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
-                      {bookingCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {tabConfig.delivery !== false && (
-                <button
-                  onClick={() => setActiveTab('delivery')}
-                  className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 text-orange-700 hover:text-orange-900 hover:bg-orange-50 border border-orange-200 cursor-pointer ml-auto"
-                >
-                  <Bike className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-600" />
-                  <span>🛵 Ir a ServiGo Delivery</span>
-                  {deliveryPendingCount > 0 && (
-                    <span className="bg-orange-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
-                      {deliveryPendingCount}
-                    </span>
-                  )}
-                </button>
-              )}
-            </>
-          )}
+      {/* Sub-secciones de Servicios (Alquiler y Delivery tienen su propia navegación) */}
+      {!isAlquilerActive && !isDeliveryActive && (
+        <div className="bg-sg-navy border-t border-white/10">
+          <nav
+            aria-label="Secciones de Servicios"
+            className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar px-4 py-2.5"
+          >
+            {([
+              { id: 'search', label: 'Profesionales', icon: Search, show: tabConfig.search },
+              { id: 'register', label: 'Soy trabajador', icon: UserPlus, show: tabConfig.register },
+              { id: 'jobs', label: 'Bolsa de trabajo', icon: Briefcase, show: tabConfig.jobs !== false },
+              { id: 'shops', label: 'Comercios', icon: Store, show: tabConfig.shops },
+              { id: 'cadetes', label: 'Cadetes', icon: Bike, show: true },
+              { id: 'remises', label: 'Remises', icon: Car, show: tabConfig.remises !== false },
+              { id: 'ai', label: 'Diagnóstico IA', icon: Sparkles, show: tabConfig.ai },
+              { id: 'bruzzone', label: 'Ferretería Bruzzone', icon: ShoppingBag, show: tabConfig.sponsor },
+              { id: 'bookings', label: 'Mis solicitudes', icon: Calendar, show: tabConfig.bookings, count: bookingCount },
+            ] as const)
+              .filter((t) => t.show)
+              .map((t) => {
+                const Icon = t.icon;
+                const on = activeTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    aria-current={on ? 'page' : undefined}
+                    className={`shrink-0 h-10 px-3.5 rounded-full text-sm whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+                      on ? 'bg-white text-sg-navy font-extrabold' : 'text-[#c3cfea] font-semibold hover:bg-white/10'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                    {t.label}
+                    {'count' in t && t.count > 0 && (
+                      <span className="bg-sg-orange text-[#2a1300] text-[11px] font-black px-1.5 rounded-full min-w-5 text-center">{t.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+          </nav>
         </div>
-      </div>
+      )}
     </header>
   );
 };

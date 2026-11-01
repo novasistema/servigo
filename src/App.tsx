@@ -1249,12 +1249,25 @@ export default function App() {
       />
 
       {/* App Body Content */}
-      <main className={`flex-1 pb-28 sm:pb-16 ${activeTab === 'alquiler' ? 'bg-sg-navy' : ''}`}>
+      <main className={`flex-1 pb-28 sm:pb-16 ${activeTab === 'alquiler' || activeTab === 'search' ? 'bg-sg-navy' : ''}`}>
         {/* TAB 1: WORKERS SEARCH & DISCOVERY CATALOG */}
         {activeTab === 'search' && (
           <div>
+            {/* Encabezado de Servicios */}
+            <div className="max-w-7xl mx-auto px-5 pt-6 pb-4 text-white font-sans space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-xl bg-sg-blue flex items-center justify-center shrink-0">
+                  <Wrench className="w-6 h-6 text-white" strokeWidth={2.4} aria-hidden="true" />
+                </span>
+                <h1 className="m-0 text-[32px] sm:text-4xl font-black tracking-[-0.03em] leading-none">Servicios</h1>
+              </div>
+              <p className="m-0 text-[15px] leading-snug text-[#c3cfea] max-w-2xl">
+                Profesionales de Alejandro Roca y la zona. Escribiles por WhatsApp o pediles un turno.
+              </p>
+            </div>
+
             {/* Promoted Creator Banners Carousel */}
-            <div className="max-w-7xl mx-auto px-4 pt-6 pb-2">
+            <div className="max-w-7xl mx-auto px-5 pb-4">
               <PromotedBannerCarousel
                 banners={banners}
                 isAdmin={isAdminAuthenticated}
@@ -1283,57 +1296,62 @@ export default function App() {
             />
 
             {/* Catalog Grid */}
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3.5 sm:space-y-4">
-              {/* Results count header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 font-bold">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span>
-                    Mostrando <strong className="text-slate-900 font-black">{filteredWorkers.length}</strong>{' '}
-                    profesionales de {workers.length} registrados
-                  </span>
-                  {isCloudSynced && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold">
-                      <CloudCheck className="w-3 h-3 text-emerald-600" />
-                      Nube Firestore Activa
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setActiveTab('ai')}
-                  className="text-orange-600 hover:text-orange-700 font-bold flex items-center gap-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-                  <span>¿No sabes a quién llamar? Diagnóstico IA</span>
-                </button>
+            <div className="max-w-7xl mx-auto px-5 py-5 space-y-4 text-white font-sans">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-[#c3cfea]">
+                  <b className="text-white">{filteredWorkers.length}</b> profesionales
+                </span>
+                {tabConfig.ai && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('ai')}
+                    className="font-extrabold text-[#6aa8ff] hover:text-white inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" aria-hidden="true" />
+                    ¿No sabés a quién llamar? Contanos el problema
+                  </button>
+                )}
               </div>
 
-              {/* Grid of cards */}
               {filteredWorkers.length === 0 ? (
-                <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-10 text-center space-y-3 shadow-sm">
-                  <Wrench className="w-12 h-12 text-slate-400 mx-auto" />
-                  <h3 className="text-base font-bold text-slate-800">
-                    No encontramos profesionales para este filtro
+                <div className="rounded-3xl bg-sg-navy-2 p-7 text-center space-y-3">
+                  <h3 className="m-0 text-xl font-black">
+                    {workers.length === 0 ? 'Estamos sumando profesionales' : 'No encontramos profesionales con esos filtros'}
                   </h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Intenta cambiar la localidad o el rubro seleccionado para ver más trabajadores en tu área.
+                  <p className="m-0 text-sm text-[#c3cfea] max-w-md mx-auto">
+                    {workers.length === 0
+                      ? '¿Sos gasista, electricista, plomero o hacés algún oficio? Sumate gratis y que te encuentren los vecinos.'
+                      : 'Probá con otro rubro o con todas las localidades.'}
                   </p>
-                  <button
-                    onClick={() => {
-                      setSelectedTrade('all');
-                      setSelectedZone('all');
-                      setSearchQuery('');
-                      setOnlyMatriculados(false);
-                      setOnly24h(false);
-                      setOnlyBruzzonePartner(false);
-                    }}
-                    className="mt-2 py-2.5 px-5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-sm"
-                  >
-                    Restablecer Filtros
-                  </button>
+                  {workers.length === 0 ? (
+                    tabConfig.register && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('register')}
+                        className="h-11 px-5 rounded-xl bg-sg-blue text-white font-extrabold text-sm cursor-pointer"
+                      >
+                        Sumarme como trabajador
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTrade('all');
+                        setSelectedZone('all');
+                        setSearchQuery('');
+                        setOnlyMatriculados(false);
+                        setOnly24h(false);
+                        setOnlyBruzzonePartner(false);
+                      }}
+                      className="h-11 px-5 rounded-xl bg-sg-blue text-white font-extrabold text-sm cursor-pointer"
+                    >
+                      Ver todos
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {filteredWorkers.map((worker) => (
                     <WorkerCard
                       key={worker.id}

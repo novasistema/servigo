@@ -166,23 +166,27 @@ export async function ensureMerchantsSeeded(): Promise<void> {
 /**
  * Suscripción en tiempo real al listado de comercios
  */
+// Comercios de demostración que pudieron quedar sembrados: nunca se muestran al público.
+const DEMO_MERCHANT_IDS = new Set(INITIAL_MERCHANTS.map((m) => m.id));
+
 export function subscribeMerchants(onData: (merchants: Merchant[]) => void): () => void {
-  ensureMerchantsSeeded();
 
   const merchantsRef = collection(db, MERCHANTS_COLLECTION);
   return onSnapshot(
     merchantsRef,
     (snapshot) => {
       if (!snapshot.empty) {
-        const list: Merchant[] = snapshot.docs.map((d) => d.data() as Merchant);
+        const list: Merchant[] = snapshot.docs
+          .map((d) => d.data() as Merchant)
+          .filter((m) => !DEMO_MERCHANT_IDS.has(m.id));
         onData(list);
       } else {
-        onData(INITIAL_MERCHANTS);
+        onData([]);
       }
     },
     (err) => {
       handleDeliveryFirestoreError(err, 'onSnapshot', MERCHANTS_COLLECTION);
-      onData(INITIAL_MERCHANTS);
+      onData([]);
     }
   );
 }

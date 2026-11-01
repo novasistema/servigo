@@ -287,7 +287,7 @@ export const MerchantLoginRegisterView: React.FC<MerchantLoginRegisterViewProps>
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="Ej. donantonio o donantonio@servigo.com"
+                    placeholder="Tu usuario o email"
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all placeholder:text-slate-400"
                     required
                   />
@@ -328,65 +328,6 @@ export const MerchantLoginRegisterView: React.FC<MerchantLoginRegisterViewProps>
               <ArrowRight className="w-4 h-4 text-amber-400" />
             </button>
 
-            {/* Quick Demo Credentials Box for Instant Testing */}
-            <div className="pt-4 border-t border-slate-100 space-y-2.5">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
-                ⚡ Acceso Rápido de Prueba (Demo Multi-Rubro):
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('donantonio', 'antonio123')}
-                  className="p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200/80 text-left transition-all cursor-pointer group"
-                >
-                  <span className="text-xs font-black text-slate-900 block truncate group-hover:text-orange-600">
-                    🍕 Don Antonio
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate">
-                    Comidas • <strong>donantonio</strong>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('sanroque', 'farmacia123')}
-                  className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-left transition-all cursor-pointer group"
-                >
-                  <span className="text-xs font-black text-slate-900 block truncate group-hover:text-emerald-600">
-                    💊 San Roque
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate">
-                    Farmacia • <strong>sanroque</strong>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('tendencias', 'ropa123')}
-                  className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-left transition-all cursor-pointer group"
-                >
-                  <span className="text-xs font-black text-slate-900 block truncate group-hover:text-indigo-600">
-                    👗 Tendencias
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate">
-                    Ropa • <strong>tendencias</strong>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('puntoexpress', 'kiosco123')}
-                  className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 text-left transition-all cursor-pointer group"
-                >
-                  <span className="text-xs font-black text-slate-900 block truncate group-hover:text-amber-600">
-                    🏪 Punto Express
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate">
-                    Kiosco • <strong>puntoexpress</strong>
-                  </span>
-                </button>
-              </div>
-            </div>
           </form>
         )}
 
