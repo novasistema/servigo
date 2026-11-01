@@ -8,7 +8,7 @@ import { AdminRentalItemsPanel } from './admin/AdminRentalItemsPanel';
 import { AdminConvenioPanel } from './admin/AdminConvenioPanel';
 import { AdminApprovalsPanel } from './admin/AdminApprovalsPanel';
 import { AdminListingsPanel } from './admin/AdminListingsPanel';
-import { compressImageFile } from '../utils/imageCompression';
+import { compressPhoto } from '../utils/imageCompression';
 import {
   X,
   Lock,
@@ -1104,7 +1104,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   const f = e.target.files?.[0];
                                   if (!f) return;
                                   try {
-                                    const dataUrl = await compressImageFile(f, 1200, 0.75);
+                                    const dataUrl = await compressPhoto(f, 'banner');
                                     setEditingBanner((prev: any) => ({ ...prev, imageUrl: dataUrl }));
                                   } catch (err) {
                                     console.error(err);

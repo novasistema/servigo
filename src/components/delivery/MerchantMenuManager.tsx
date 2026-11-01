@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { compressPhoto } from '../../utils/imageCompression';
 import {
   Plus,
   Edit2,
@@ -27,7 +28,6 @@ import {
   toggleProductAvailability,
   updateMerchantDeliveryFees,
 } from '../../lib/deliveryService';
-import { compressImageFile } from '../../utils/imageCompression';
 
 interface MerchantMenuManagerProps {
   merchant: Merchant;
@@ -143,7 +143,7 @@ export const MerchantMenuManager: React.FC<MerchantMenuManagerProps> = ({
     setFormError(null);
     try {
       // Compress and resize automatically (optimal for Firestore)
-      const compressedDataUrl = await compressImageFile(file, 800, 0.82);
+      const compressedDataUrl = await compressPhoto(file, 'plato');
       setImageUrl(compressedDataUrl);
       if (showToast) {
         showToast('📷 ¡Foto cargada y optimizada exitosamente!');

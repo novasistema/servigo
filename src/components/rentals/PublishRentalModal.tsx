@@ -21,7 +21,7 @@ import { RentalItem, RentalCategory, RentalItemCondition, RentalOwner } from '..
 import { RENTAL_CATEGORIES } from '../../data/mockRentals';
 import { subscribeRentalPlatformFee } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { compressImageFile } from '../../utils/imageCompression';
+import { compressPhoto } from '../../utils/imageCompression';
 
 interface PublishRentalModalProps {
   isOpen: boolean;
@@ -97,7 +97,7 @@ export const PublishRentalModal: React.FC<PublishRentalModalProps> = ({
       }
 
       // Se achica la foto (las del celular pesan varios MB) para que entre en la base y cargue rápido
-      compressImageFile(file, 900, 0.62)
+      compressPhoto(file, 'producto')
         .then((result) => {
           setUploadedImages((prev) => {
             if (prev.length >= 3) return prev;

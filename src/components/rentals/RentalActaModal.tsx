@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { compressPhoto } from '../../utils/imageCompression';
 import { X, Camera, CheckCircle2, AlertTriangle, Trash2, ClipboardCheck, Clock } from 'lucide-react';
 import { RentalBooking, RentalActa } from '../../types';
 import { getActaPhotos } from '../../lib/firebase';
-import { compressImageFile } from '../../utils/imageCompression';
 import { useAuth } from '../../context/AuthContext';
 
 type Stage = 'entrega' | 'devolucion';
@@ -90,7 +90,7 @@ export const RentalActaModal: React.FC<Props> = ({ booking, stage, role, isOpen,
     const list = Array.from(files).slice(0, room);
     try {
       const out: string[] = [];
-      for (const f of list) out.push(await compressImageFile(f, 1024, 0.72));
+      for (const f of list) out.push(await compressPhoto(f, 'acta'));
       setPhotos((p) => [...p, ...out].slice(0, 4));
     } catch (e: any) {
       showToast(e.message || 'No se pudo cargar la foto');

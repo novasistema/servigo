@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { compressPhoto, compressCanvasSource } from '../utils/imageCompression';
 import {
   Wrench,
   User,
@@ -190,7 +191,7 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
 
       ctx.drawImage(video, startX, startY, size, size, 0, 0, 400, 400);
 
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = compressCanvasSource(canvas, 400, 400, 'perfil');
       setAvatar(dataUrl);
       setPhotoSourceType('camera');
       stopCamera();
@@ -200,14 +201,13 @@ export const WorkerRegisterForm: React.FC<WorkerRegisterFormProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setAvatar(event.target.result as string);
+      compressPhoto(file, 'perfil')
+        .then((dataUrl) => {
+          setAvatar(dataUrl);
           setPhotoSourceType('upload');
-        }
-      };
-      reader.readAsDataURL(file);
+        })
+        .catch((err) => console.error(err));
+      e.target.value = '';
     }
   };
 
