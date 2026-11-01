@@ -203,7 +203,7 @@ export default function App() {
 
   // Rental Items (ServiGo Alquiler de Productos)
   const [rentalItems, setRentalItems] = useState<RentalItem[]>(() => {
-    const saved = localStorage.getItem('servigo_rentals_v2');
+    const saved = localStorage.getItem('servigo_rentals_v3');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -319,10 +319,8 @@ export default function App() {
     });
 
     const unsubscribeCoupons = subscribeCoupons((firestoreCoupons) => {
-      if (firestoreCoupons && firestoreCoupons.length > 0) {
-        setCoupons(firestoreCoupons);
-        safeSetItem('servigo_coupons_v1', JSON.stringify(firestoreCoupons));
-      }
+      setCoupons(firestoreCoupons || []);
+      safeSetItem('servigo_coupons_v1', JSON.stringify(firestoreCoupons || []));
     });
 
     const unsubscribeVouchers = subscribeIssuedVouchers((firestoreVouchers) => {
@@ -331,10 +329,9 @@ export default function App() {
     });
 
     const unsubscribeRentals = subscribeRentalItems((firestoreRentals) => {
-      if (firestoreRentals && firestoreRentals.length > 0) {
-        setRentalItems(firestoreRentals);
-        safeSetItem('servigo_rentals_v2', JSON.stringify(firestoreRentals));
-      }
+      // Siempre se reemplaza (aunque venga vacía), así lo borrado desaparece
+      setRentalItems(firestoreRentals || []);
+      safeSetItem('servigo_rentals_v3', JSON.stringify(firestoreRentals || []));
     });
 
     const unsubscribeRentalBookings = subscribeRentalBookings((firestoreBookings) => {
@@ -343,10 +340,8 @@ export default function App() {
     });
 
     const unsubscribeRentalOwners = subscribeRentalOwners((firestoreOwners) => {
-      if (firestoreOwners && firestoreOwners.length > 0) {
-        setRentalOwners(firestoreOwners);
-        safeSetItem('servigo_rental_owners_v1', JSON.stringify(firestoreOwners));
-      }
+      setRentalOwners(firestoreOwners || []);
+      safeSetItem('servigo_rental_owners_v1', JSON.stringify(firestoreOwners || []));
     });
 
     const unsubscribeRentalPayouts = subscribeRentalPayouts((firestorePayouts) => {
@@ -425,7 +420,7 @@ export default function App() {
   }, [remises]);
 
   useEffect(() => {
-    safeSetItem('servigo_rentals_v2', JSON.stringify(rentalItems));
+    safeSetItem('servigo_rentals_v3', JSON.stringify(rentalItems));
   }, [rentalItems]);
 
   useEffect(() => {
@@ -881,7 +876,7 @@ export default function App() {
       setRentalItems((prev) => {
         const exists = prev.some((i) => i.id === secureItem.id);
         const updated = exists ? prev.map((i) => (i.id === secureItem.id ? secureItem : i)) : [secureItem, ...prev];
-        safeSetItem('servigo_rentals_v2', JSON.stringify(updated));
+        safeSetItem('servigo_rentals_v3', JSON.stringify(updated));
         return updated;
       });
 
@@ -918,7 +913,7 @@ export default function App() {
       await deleteRentalItemFromFirestore(itemId);
       setRentalItems((prev) => {
         const updated = prev.filter((i) => i.id !== itemId);
-        safeSetItem('servigo_rentals_v2', JSON.stringify(updated));
+        safeSetItem('servigo_rentals_v3', JSON.stringify(updated));
         return updated;
       });
       showToast('Artículo eliminado de ServiGo Alquiler.');
